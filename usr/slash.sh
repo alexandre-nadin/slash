@@ -23,14 +23,13 @@ slash::safesource() {
   :
 }
 
-slash::t_hello() {
-  return 1
-} && tsh__add_func slash::t_hello
 
 # --------------
 # Requirements
 # --------------
 GREP_EXT_OPTION_PATTERN='-E, --extended-regexp'
+shopt -s expand_aliases
+
 function set_slash_grep() {
   alias sgrep='command grep -oP'
 }
@@ -59,10 +58,10 @@ test_requirements \
 # ----------
 #  Library
 # ----------
-FUNC_REGEX_PREFIX='^\s*function\s*'
+FUNC_REGEX_PREFIX='^\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
 FUNC_REGEX_DECLARATION="${FUNC_REGEX_NAME}"'\s*\(\)'
-FUNC_REGEX_SUFFIX='\s*\{{0,1}\s*$'
+FUNC_REGEX_SUFFIX='\s*\{\s*$'
 FUNC_REGEX="${FUNC_REGEX_PREFIX}${FUNC_REGEX_DECLARATION}${FUNC_REGEX_SUFFIX}"
 
 slash__FUNC_DELIM='}'
@@ -74,8 +73,18 @@ slash::func_recipe() {
 }
 
 slash::is_func_declaration() {
-  sgrep "${FUNC_REGEX}"
+  head -n 1 <<< "$1" | sgrep "${FUNC_REGEX}" &> /dev/null
 }
+
+t_is_func_declaration() {
+  local _func="slash::is_func_declaration"
+  $_func " function hello () { " || return 1
+  $_func " hello() { " || return 2
+  ! $_func "  func hello() { " || return 3
+  ! $_func "  func hello() " || return 4
+  $_func " function -_hle-lo () {  " || return 5
+  ! $_func " function -_hle-lo due () {  " || return 6
+} && tsh__add_func t_is_func_declaration
 
 slash::func_name() {
   #
