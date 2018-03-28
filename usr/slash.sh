@@ -11,6 +11,7 @@ slash::source() {
 
 source logging.lib
 source testsh.lib 
+source io.lib
 slash::source sourcesh.lib
 
 slash::testlib() {
@@ -31,8 +32,13 @@ GREP_EXT_OPTION_PATTERN='-E, --extended-regexp'
 shopt -s expand_aliases
 
 function set_slash_grep() {
-  alias sgrep='command grep -oP'
+  #
+  # slash uses perl regex
+  #
+  alias sgrep='command grep -P'
+  alias sogrep='command grep -oP'
 }
+
 function test_requirements() {
   ## Gnu Grep
   type -af egrep &> /dev/null \
@@ -60,7 +66,8 @@ test_requirements \
 # ----------
 FUNC_REGEX_PREFIX='^\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
-FUNC_REGEX_DECLARATION="${FUNC_REGEX_NAME}"'\s*\(\)'
+FUNC_REGEX_PARENTHESIS='\s*\(\)'
+FUNC_REGEX_DECLARATION="${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}"
 FUNC_REGEX_SUFFIX='\s*\{\s*$'
 FUNC_REGEX="${FUNC_REGEX_PREFIX}${FUNC_REGEX_DECLARATION}${FUNC_REGEX_SUFFIX}"
 
@@ -72,11 +79,56 @@ slash::func_recipe() {
   printf "$1"
 }
 
-slash::is_func_declaration() {
-  head -n 1 <<< "$1" | sgrep "${FUNC_REGEX}" &> /dev/null
+slash::func_name() {
+  #
+  # Retrieves the name of the given function declaration
+  # Assumes 'is_func_declaration' has been tested before.
+  #
+  slash::is_func_declaration "$1" \
+  && head -n 1 <<< "$1" \
+   | sed -r "
+       s|${FUNC_REGEX_PREFIX}||g ;
+       s|${FUNC_REGEX_SUFFIX}||g ;
+       s|${FUNC_REGEX_PARENTHESIS}$||g ;
+     "
 }
 
-t_is_func_declaration() {
+function str.equals() {
+  [ "$1" == "$2" ]
+}
+
+test__func_name() {
+  local _func="slash::func_name"
+  [ "$($_func ' function hello () { ')" == 'hello' ] || return 1
+  ! [ "$($_func ' function hello () { ')" == 'hello ' ] || return 2
+  ! [ "$($_func '  hello () { ')" == 'hello ' ] || return 3
+
+  local _f=$(cat <<eol
+    function tre-_llo12 () {
+     unction whatever the show() 9)())*IOH {}{ {
+      echo one
+      echo two
+    }
+eol
+          )
+  local _res=$($_func "$_f")
+  [ "$_res" == 'tre-_llo12' ] || return 4
+
+} && tsh__add_func test__func_name
+
+
+slash::is_func_declaration() {
+  head -n 1 <<< "$1" | sogrep "${FUNC_REGEX}" &> /dev/null
+}
+
+test__is_func_declaration() {
+  #
+  # SPECIFICATIONS 
+  #  Initial keyword 'function' is optional.
+  #  Function name contains all but whitespaces
+  #  Function parenthesis are mandatory
+  #  Function declaration ends with a curly bracket.
+  #
   local _func="slash::is_func_declaration"
   $_func " function hello () { " || return 1
   $_func " hello() { " || return 2
@@ -84,19 +136,8 @@ t_is_func_declaration() {
   ! $_func "  func hello() " || return 4
   $_func " function -_hle-lo () {  " || return 5
   ! $_func " function -_hle-lo due () {  " || return 6
-} && tsh__add_func t_is_func_declaration
+} && tsh__add_func test__is_func_declaration
 
-slash::func_name() {
-  #
-  # Retrieves the name of the given function declaration
-  #
-  echo -e "$@" \
-   | grep "$FUNC_REGEX"
-   #| sed 's/^[[:space:]]*function[[:space:]]*//'
-  #grep "^[[:space:]]*(function)?[[:space:]]*[[:word:]]*()[[:space:]]*$" <<< "$1"
-}
-
-source io.lib
 slash::defun() {
   echo "[$FUNCNAME]"
   local _input=$(io_existing_stdin)
