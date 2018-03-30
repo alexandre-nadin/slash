@@ -12,14 +12,7 @@ slash::source() {
 source logging.lib
 source testsh.lib 
 source io.lib
-#slash::source sourcesh.lib
 source sourcesh.lib
-
-slash::testlib() {
-  local _lib="$1"
-  source "$_lib"
-  tsh__test_funcs 
-}
 
 slash::safesource() {
   :
@@ -57,16 +50,17 @@ function test_requirements() {
        errecho "This version of Grep doesn't have extended regex option ($GREP_EXT_OPTION_PATTERN)."
        return 1
      }
-} #&& test_requirements || return 1
+}
 
 test_requirements \
 && set_slash_grep \
 || return 1
 
+
 # ----------
 #  Library
 # ----------
-
+## Function's Regular Expressions
 FUNC_REGEX_KEYWORD='\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
 FUNC_REGEX_PARENTHESIS='\s*\(\)\s*'
@@ -76,14 +70,6 @@ FUNC_REGEX_DECLARATION="^${FUNC_REGEX_KEYWORD}${FUNC_REGEX_NAME}${FUNC_REGEX_PAR
 
 slash__DECORATOR_LIMIT='}'
 slash__DECORATOR_LIMIT_REGEX="^\s*${slash__DECORATOR_LIMIT}\s*$"
-
-#slash::readfun() {
-#  #
-#  # Reads in a function declaration.
-#  # If not specified, reading delimitor is ${slash__DECORATOR_LIMIT_REGEX}.
-#  #
-#  sed -r "/${1:-${slash__DECORATOR_LIMIT_REGEX}}/q"
-#}
 
 #
 #  Because we need to read directly the template function declaration right
@@ -118,7 +104,6 @@ slash::greet() {
     ${_fun_recipe}
   }
 eol
-
 }
 
 slash::defun() {
