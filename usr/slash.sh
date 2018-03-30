@@ -64,13 +64,12 @@ test_requirements \
 # ----------
 #  Library
 # ----------
-FUNC_REGEX_PREFIX='^\s*(function){0,1}\s*'
+FUNC_REGEX_KEYWORD='\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
-FUNC_REGEX_PARENTHESIS='\s*\(\)'
-FUNC_REGEX_DECLARATION="${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}"
-FUNC_REGEX_BLOC_OPEN='\s*\{\s*$'
+FUNC_REGEX_PARENTHESIS='\s*\(\)\s*'
+FUNC_REGEX_BLOC_OPEN='\s*\{\s*'
 FUNC_REGEX_BLOC_CLOSE='^\s*\}\s*$'
-FUNC_REGEX="${FUNC_REGEX_PREFIX}${FUNC_REGEX_DECLARATION}${FUNC_REGEX_BLOC_OPEN}"
+FUNC_REGEX_DECLARATION="^${FUNC_REGEX_KEYWORD}${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}${FUNC_REGEX_BLOC_OPEN}$"
 
 slash__FUNC_DELIM='}'
 slash::func_recipe() {
@@ -99,8 +98,8 @@ slash::func_name() {
   slash::is_func_declaration "$1" \
   && head -n 1 <<< "$1" \
    | sed -r "
-       s|${FUNC_REGEX_PREFIX}||g ;
-       s|${FUNC_REGEX_BLOC_OPEN}||g ;
+       s|^${FUNC_REGEX_KEYWORD}||g ;
+       s|${FUNC_REGEX_BLOC_OPEN}$||g ;
        s|${FUNC_REGEX_PARENTHESIS}$||g ;
      "
 }
@@ -131,7 +130,7 @@ eol
 
 slash::is_func_declaration() {
   head -n 1 <<< "$1" \
-   | sogrep "${FUNC_REGEX}" &> /dev/null
+   | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
 }
 
 test__is_func_declaration() {
