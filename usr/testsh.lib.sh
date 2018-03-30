@@ -39,9 +39,10 @@ tsh__test_funcs() {
   #
   # Launches all the registered testing functions.
   #
+  set +u
   local _status=0
   for _test in "${tsh__funcs[@]}"; do
-    printf "Testing function '$_test'" >&2 
+    printf "  function '$_test'" >&2 
     $_test \
      && printf "\tv OK\n" >&2 \
      || {
