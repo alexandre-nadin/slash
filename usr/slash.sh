@@ -12,7 +12,8 @@ slash::source() {
 source logging.lib
 source testsh.lib 
 source io.lib
-slash::source sourcesh.lib
+#slash::source sourcesh.lib
+source sourcesh.lib
 
 slash::testlib() {
   local _lib="$1"
@@ -24,12 +25,13 @@ slash::safesource() {
   :
 }
 
+# Allow permanent aliases
+shopt -s expand_aliases
 
 # --------------
 # Requirements
 # --------------
 GREP_EXT_OPTION_PATTERN='-E, --extended-regexp'
-shopt -s expand_aliases
 
 function set_slash_grep() {
   #
@@ -64,6 +66,7 @@ test_requirements \
 # ----------
 #  Library
 # ----------
+
 FUNC_REGEX_KEYWORD='\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
 FUNC_REGEX_PARENTHESIS='\s*\(\)\s*'
@@ -71,15 +74,80 @@ FUNC_REGEX_BLOC_OPEN='\s*\{\s*'
 FUNC_REGEX_BLOC_CLOSE='^\s*\}\s*$'
 FUNC_REGEX_DECLARATION="^${FUNC_REGEX_KEYWORD}${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}${FUNC_REGEX_BLOC_OPEN}$"
 
-slash__FUNC_DELIM='}'
+slash__DECORATOR_LIMIT='}'
+slash__DECORATOR_LIMIT_REGEX="^\s*${slash__DECORATOR_LIMIT}\s*$"
+
+#slash::readfun() {
+#  #
+#  # Reads in a function declaration.
+#  # If not specified, reading delimitor is ${slash__DECORATOR_LIMIT_REGEX}.
+#  #
+#  sed -r "/${1:-${slash__DECORATOR_LIMIT_REGEX}}/q"
+#}
+
+#
+#  Because we need to read directly the template function declaration right
+# after the deecorator due to the (ba)sh language, I am forced to use aliases.
+#
+#  In order to successfully have the new functions' declarations at the currenti
+# scope, the 'function-declaring' them (slash::defun) SHOULD NOT be piped. 
+#
+#  In order not to interprete variables in the template function 'funtemp',
+# aliases should not be double-quoted. Double-quoting 'funtemp' inside the alias
+# is fine though.
+#
+alias stdin_or_readfun="io_existing_stdin || readfun"
+alias read_funtemp_stdin="funtemp=\$(io_existing_stdin)"
+alias read_funtemp_read="read -d '' funtemp <<'${slash__DECORATOR_LIMIT}'"
+alias read_funtemp='read_funtemp_stdin || read_funtemp_read'
+alias @slash-defun='read_funtemp; slash::defun <<< "$funtemp"' 
+
+alias @slash-greet='read_funtemp; slash::defun <<< "$(slash::greet <<< "$funtemp")"' 
+slash::greet() {
+  #
+  # Takes a template function in input and prepands a greeting line to its
+  # recipe.
+  #
+  local _fun_template _fun_name _fun_recipe _fun_new
+  _fun_template="${1:-$(io_existing_stdin)}"
+  _fun_name=$(slash::func_name "$_fun_template")
+  _fun_recipe=$(slash::func_recipe "$_fun_template")
+  cat << eol
+    ${_fun_name}() {
+    echo "Greetings!"
+    ${_fun_recipe}
+  }
+eol
+
+}
+
+slash::defun() {
+  #
+  # Takes a template function in input and declares it.
+  #
+  local _fun_template _fun_name _fun_recipe _fun_new
+  _fun_template="${1:-$(io_existing_stdin)}"
+  _fun_name=$(slash::func_name "$_fun_template")
+  _fun_recipe=$(slash::func_recipe "$_fun_template")
+  _fun_new=$(cat << eol
+    ${_fun_name}() {
+    ${_fun_recipe}
+  }
+eol
+)
+  eval "${_fun_new}"
+} 
+
 slash::func_recipe() {
   #
   # Retrieves the recipe of the given function declaration
   #
   slash::is_func_declaration "$1" \
   && tail -n +2 <<< "$1" \
-   | sed -r "
+   | sed -r " 
+       ## Remove empty lines
        /^\s*$/d ;
+       ## Remove function's closing block curly bracket if any
        $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
      "
 }
@@ -98,8 +166,11 @@ slash::func_name() {
   slash::is_func_declaration "$1" \
   && head -n 1 <<< "$1" \
    | sed -r "
+       ## Remove function keyword
        s|^${FUNC_REGEX_KEYWORD}||g ;
+       ## Remove function's open block curly bracket
        s|${FUNC_REGEX_BLOC_OPEN}$||g ;
+       ## Remove function's parenthesis
        s|${FUNC_REGEX_PARENTHESIS}$||g ;
      "
 }
@@ -151,16 +222,4 @@ test__is_func_declaration() {
   ! $_func " function -_hle-lo due () {  " || return 6
 } && tsh__add_func test__is_func_declaration
 
-slash::defun() {
-  echo "[$FUNCNAME]"
-  local _input=$(io_existing_stdin)
-  echo -e "\n_input: $_input ($(echo -e $_input | wc -l))"
-  
-
-  local _funcname=$(slash::func_name "$_input")
-  echo -e "\n_funcname: '$_funcname'"
-  ## Function recipe
-  local _recipe=$(slash::func_recipe "$_input")
-  echo -e "\n_recipe: '$_recipe'"
-} && alias @slash-func="cat << '$slash__FUNC_DELIM' | slash::defun"
-
+set +euf +o pipefail
