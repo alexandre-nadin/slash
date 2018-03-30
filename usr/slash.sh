@@ -68,16 +68,28 @@ FUNC_REGEX_PREFIX='^\s*(function){0,1}\s*'
 FUNC_REGEX_NAME='[^\s]*'
 FUNC_REGEX_PARENTHESIS='\s*\(\)'
 FUNC_REGEX_DECLARATION="${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}"
-FUNC_REGEX_SUFFIX='\s*\{\s*$'
-FUNC_REGEX="${FUNC_REGEX_PREFIX}${FUNC_REGEX_DECLARATION}${FUNC_REGEX_SUFFIX}"
+FUNC_REGEX_BLOC_OPEN='\s*\{\s*$'
+FUNC_REGEX_BLOC_CLOSE='^\s*\}\s*$'
+FUNC_REGEX="${FUNC_REGEX_PREFIX}${FUNC_REGEX_DECLARATION}${FUNC_REGEX_BLOC_OPEN}"
 
 slash__FUNC_DELIM='}'
 slash::func_recipe() {
   #
   # Retrieves the recipe of the given function declaration
   #
-  printf "$1"
+  slash::is_func_declaration "$1" \
+  && tail -n +2 <<< "$1" \
+   | sed -r "
+       /^\s*$/d ;
+       $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
+     "
 }
+
+test__func_recipe() {
+  local _func="slash::func_name"
+  [ "$($_func ' function hello () { ')" == 'hello' ] || return 1
+  :
+} && tsh__add_func test__func_recipe
 
 slash::func_name() {
   #
@@ -88,22 +100,20 @@ slash::func_name() {
   && head -n 1 <<< "$1" \
    | sed -r "
        s|${FUNC_REGEX_PREFIX}||g ;
-       s|${FUNC_REGEX_SUFFIX}||g ;
+       s|${FUNC_REGEX_BLOC_OPEN}||g ;
        s|${FUNC_REGEX_PARENTHESIS}$||g ;
      "
 }
 
-function str.equals() {
-  [ "$1" == "$2" ]
-}
-
 test__func_name() {
   local _func="slash::func_name"
+  local _res
   [ "$($_func ' function hello () { ')" == 'hello' ] || return 1
   ! [ "$($_func ' function hello () { ')" == 'hello ' ] || return 2
   ! [ "$($_func '  hello () { ')" == 'hello ' ] || return 3
 
   local _f=$(cat <<eol
+
     function tre-_llo12 () {
      unction whatever the show() 9)())*IOH {}{ {
       echo one
@@ -111,26 +121,30 @@ test__func_name() {
     }
 eol
           )
-  local _res=$($_func "$_f")
-  [ "$_res" == 'tre-_llo12' ] || return 4
+  _res=$($_func "$_f")
+  ! [ "$_res" == 'tre-_llo12' ] || return 4
+
+  _res=$($_func "$(sed '/^\s*$/d' <<< "$_f")")
+  [ "$_res" == 'tre-_llo12' ] || return 5
 
 } && tsh__add_func test__func_name
 
-
 slash::is_func_declaration() {
-  head -n 1 <<< "$1" | sogrep "${FUNC_REGEX}" &> /dev/null
+  head -n 1 <<< "$1" \
+   | sogrep "${FUNC_REGEX}" &> /dev/null
 }
 
 test__is_func_declaration() {
   #
   # SPECIFICATIONS 
+  #  Function declaration should be on the first line.
   #  Initial keyword 'function' is optional.
   #  Function name contains all but whitespaces
   #  Function parenthesis are mandatory
   #  Function declaration ends with a curly bracket.
   #
   local _func="slash::is_func_declaration"
-  $_func " function hello () { " || return 1
+  $_func "   function hello () { " || return 1
   $_func " hello() { " || return 2
   ! $_func "  func hello() { " || return 3
   ! $_func "  func hello() " || return 4
