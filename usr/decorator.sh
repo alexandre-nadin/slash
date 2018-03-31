@@ -174,3 +174,82 @@ test__is_func_declaration() {
   ! $_func " function -_hle-lo due () {  " || return 6
 } && tsh__add_func test__is_func_declaration
 
+# ------------------
+# Define decorator
+# ------------------
+#alias @dec-defun='read_funtemp; deco::defun <<< "$funtemp"' 
+alias @decorate='read_funtemp; decorate <<< "$funtemp"'
+function decorate() {
+  #
+  # Takes a template function in input and declares it.
+  # Creates a decorator referencing it.
+  #
+  local _fun_template _fun_name _fun_recipe _fun_new
+  ## Declare function
+  _fun_template="${1:-$(io_existing_stdin)}"
+  deco::defun <<< "$_fun_template"
+
+  ## Declare alias
+  _fun_name=$(deco::func_name "$_fun_template")
+  deco::defalias <<< "$_fun_name"
+} 
+
+deco::defalias() {
+  #
+  # Takes a function name and declares an alias-decorator from it.
+  #
+  local _fun_name _alias_name
+  _fun_name="${1:-$(io_existing_stdin)}"
+  _alias_name=$(deco::make_alias_name "$_fun_name")
+
+}
+
+deco::make_alias_name() {
+  #
+  # Formats the input to a suitable alias name.
+  #
+  local _oldname _newname
+  _oldname="${1:-$(io_existing_stdin)}"
+  _newname=$(
+    sed -r "
+      ## Remove multiple word lines
+      /\w+\s+\w+/d ;
+      ## Remove beginning spaces
+      s|^\s*||g ;
+      ## Remove trailing spaces
+      s|\s*$||g ;
+    " <<< "$_oldname"
+  )
+  printf "$_newname\n"
+}
+
+test__make_alias_name() {
+  local _func="deco::make_alias_name"
+  ! [ "$($_func ' ')" == ' ' ] || return 1
+  [ "$($_func ' ')" == '' ] || return 2
+  [ "$($_func ' my-name')" == 'my-name' ] || return 3
+  [ "$($_func ' _12some-other_name      ')" == '_12some-other_name' ] || return 4
+  [ "$($_func ' some composed names ')" == '' ] || return 5
+  [ "$($_func ' some other_+composed names ')" == '' ] || return 6
+} && tsh__add_func test__make_alias_name
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
