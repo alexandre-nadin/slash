@@ -61,7 +61,7 @@ DECORATOR_LIMIT_REGEX="^\s*${DECORATOR_LIMIT}\s*$"
 # after the deecorator due to the (ba)sh language, I am forced to use aliases.
 #
 #  In order to successfully have the new functions' declarations at the currenti
-# scope, the 'function-declaring' them (deco::defun) SHOULD NOT be piped. 
+# scope, the 'function-declaring' them (defun) SHOULD NOT be piped. 
 #
 #  In order not to interprete variables in the template function 'funtemp',
 # aliases should not be double-quoted. Double-quoting 'funtemp' inside the alias
@@ -71,16 +71,16 @@ alias stdin_or_readfun="io_existing_stdin || readfun"
 alias read_funtemp_stdin="funtemp=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' funtemp <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read'
-alias @dec-defun='read_funtemp; deco::defun <<< "$funtemp"' 
+alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
 
-deco::defun() {
+defun() {
   #
   # Takes a template function in input and declares it.
   #
   local _fun_template _fun_name _fun_recipe _fun_new
   _fun_template="${1:-$(io_existing_stdin)}"
-  _fun_name=$(deco::func_name "$_fun_template") || return 1
-  _fun_recipe=$(deco::func_recipe "$_fun_template") || return 1
+  _fun_name=$(func_name "$_fun_template") || return 1
+  _fun_recipe=$(func_recipe "$_fun_template") || return 1
   _fun_new=$(cat << eol
     ${_fun_name}() {
     ${_fun_recipe}
@@ -90,11 +90,11 @@ eol
   eval "${_fun_new}"
 } 
 
-deco::func_recipe() {
+func_recipe() {
   #
   # Retrieves the recipe of the given function declaration
   #
-  deco::is_func_declaration "$1" \
+  is_func_declaration "$1" \
   && tail -n +2 <<< "$1" \
    | sed -r " 
        ## Remove empty lines
@@ -105,17 +105,17 @@ deco::func_recipe() {
 }
 
 test__func_recipe() {
-  #local _func="deco::func_name"
+  #local _func="func_name"
   #[ "$($_func ' function hello () { ')" == 'hello' ] || return 1
   :
 } && tsh__add_func test__func_recipe
 
-deco::func_name() {
+func_name() {
   #
   # Retrieves the name of the given function declaration
   # Assumes 'is_func_declaration' has been tested before.
   #
-  deco::is_func_declaration "$1" \
+  is_func_declaration "$1" \
   && head -n 1 <<< "$1" \
    | sed -r "
        ## Remove function keyword
@@ -128,7 +128,7 @@ deco::func_name() {
 }
 
 test__func_name() {
-  local _func="deco::func_name"
+  local _func="func_name"
   local _res
   [ "$($_func ' function hello () { ')" == 'hello' ] || return 1
   ! [ "$($_func ' function hello () { ')" == 'hello ' ] || return 2
@@ -151,7 +151,7 @@ eol
 
 } && tsh__add_func test__func_name
 
-deco::is_func_declaration() {
+is_func_declaration() {
   head -n 1 <<< "$1" \
    | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
 }
@@ -165,7 +165,7 @@ test__is_func_declaration() {
   #  Function parenthesis are mandatory
   #  Function declaration ends with a curly bracket.
   #
-  local _func="deco::is_func_declaration"
+  local _func="is_func_declaration"
   $_func "   function hello () { " || return 1
   $_func " hello() { " || return 2
   ! $_func "  func hello() { " || return 3
@@ -177,7 +177,7 @@ test__is_func_declaration() {
 # ------------------
 # Define decorator
 # ------------------
-#alias @dec-defun='read_funtemp; deco::defun <<< "$funtemp"' 
+#alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
 alias @decorate='read_funtemp; decorate <<< "$funtemp"'
 function decorate() {
   #
@@ -188,11 +188,11 @@ function decorate() {
 
   ## Declare function from template
   _fun_template="${1:-$(io_existing_stdin)}" || return 1
-  deco::defun <<< "$_fun_template" || return 2
+  defun <<< "$_fun_template" || return 2
 
   ## Declare alias from function name
-  _fun_name=$(deco::func_name "$_fun_template") || return 3
-  deco::defalias <<< "$_fun_name" || return 4
+  _fun_name=$(func_name "$_fun_template") || return 3
+  defalias <<< "$_fun_name" || return 4
 } 
 
 test__decorate() {
@@ -225,19 +225,19 @@ test__decorate() {
   test3 &> /dev/null; [ $? -eq 3 ] || return 11 
 } && tsh__add_func test__decorate
 
-deco::defalias() {
+defalias() {
   #
   # Takes a function name and declares an alias-decorator from it.
   #
   local _fun_name _alias_name _alias_declaration
-  _fun_name="${1:-$(io_existing_stdin)}"
-  _alias_name=$(deco::gen_alias_name "$_fun_name") || return 1
-  _alias_declaration=$(deco::gen_alias_declaration <<< "$_alias_name") || return 1
-  eval "$_alias_declaration"
+  _fun_name="${1:-$(io_existing_stdin)}" || return 1
+  _alias_name=$(gen_alias_name "$_fun_name") || return 2
+  _alias_declaration=$(gen_alias_declaration <<< "$_alias_name") || return 3
+  eval "$_alias_declaration" || return 4
 }
 
 test__defalias() {
-  local _func="deco::defalias"
+  local _func="defalias"
   $_func <<< "hello" || return 1
   alias hello &> /dev/null && return 2
   alias @hello &> /dev/null || return 3
@@ -245,21 +245,21 @@ test__defalias() {
 } && tsh__add_func test__defalias
 
 
-deco::gen_alias_declaration() {
+gen_alias_declaration() {
   local _alias_name _alias_declaration
   _alias_name="${1:-$(io_existing_stdin)}"
   read -d '' _alias_declaration <<eod || :
-alias @${_alias_name}='read_funtemp; deco::defun <<< "\$funtemp"'
+alias @${_alias_name}='read_funtemp; defun <<< "\$funtemp"'
 eod
   printf "$_alias_declaration\n"
 }
 
 test__gen_alias_declaration() {
-  local _func="deco::gen_alias_declaration"
-  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; deco::defun <<< "'"$funtemp"'"'" ] || return 1
+  local _func="gen_alias_declaration"
+  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; defun <<< "'"$funtemp"'"'" ] || return 1
 } && tsh__add_func test__gen_alias_declaration
 
-deco::gen_alias_name() {
+gen_alias_name() {
   #
   # Formats the input to a suitable alias name.
   #
@@ -281,7 +281,7 @@ deco::gen_alias_name() {
 }
 
 test__gen_alias_name() {
-  local _func="deco::gen_alias_name"
+  local _func="gen_alias_name"
   [ "$($_func ' ')" == '' ] || return 1
   [ "$($_func '')" == '' ] || return 1
   [ "$($_func ' ')" == '' ] || return 2
