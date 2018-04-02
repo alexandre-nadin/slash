@@ -42,11 +42,10 @@ tsh__test_funcs() {
   set +u
   local _status=0
   for _test in "${tsh__funcs[@]}"; do
-    printf "  function '$_test'" >&2 
     $_test \
-     && printf "\tv OK\n" >&2 \
+     && printf " v OK - function '$_test'\n" >&2 \
      || {
-         printf "\tx KO ($?)\n" >&2 \
+         printf " x KO - function '$_test' ($?)\n" >&2 \
           && _status=1
         }   
   done

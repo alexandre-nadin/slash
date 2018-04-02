@@ -79,8 +79,8 @@ deco::defun() {
   #
   local _fun_template _fun_name _fun_recipe _fun_new
   _fun_template="${1:-$(io_existing_stdin)}"
-  _fun_name=$(deco::func_name "$_fun_template")
-  _fun_recipe=$(deco::func_recipe "$_fun_template")
+  _fun_name=$(deco::func_name "$_fun_template") || return 1
+  _fun_recipe=$(deco::func_recipe "$_fun_template") || return 1
   _fun_new=$(cat << eol
     ${_fun_name}() {
     ${_fun_recipe}
@@ -173,4 +173,141 @@ test__is_func_declaration() {
   $_func " function -_hle-lo () {  " || return 5
   ! $_func " function -_hle-lo due () {  " || return 6
 } && tsh__add_func test__is_func_declaration
+
+# ------------------
+# Define decorator
+# ------------------
+#alias @dec-defun='read_funtemp; deco::defun <<< "$funtemp"' 
+alias @decorate='read_funtemp; decorate <<< "$funtemp"'
+function decorate() {
+  #
+  # Takes a template function in input and declares it.
+  # Creates a decorator alias referencing it.
+  #
+  local _fun_template _fun_name _fun_recipe _fun_new
+
+  ## Declare function from template
+  _fun_template="${1:-$(io_existing_stdin)}" || return 1
+  deco::defun <<< "$_fun_template" || return 2
+
+  ## Declare alias from function name
+  _fun_name=$(deco::func_name "$_fun_template") || return 3
+  deco::defalias <<< "$_fun_name" || return 4
+} 
+
+test__decorate() {
+  local _res
+
+  #
+  @decorate && return 1 || :
+  functionn test1() {
+  echo "in test1" && return 1
+}
+  declare -f test1 &> /dev/null && return 2 || :
+  alias @test1 &> /dev/null && return 3 || :
+
+  #
+  @decorate && return 4 || :
+  t test2() {
+    echo "test2" && return 2
+}
+  declare -f test2 &> /dev/null && return 5 || :
+  alias @test2 &> /dev/null && return 6 || :
+
+  #
+  @decorate || return 7
+     function test3() {
+    echo "test3" && return 3
+}
+  declare -f test3 &> /dev/null || return 8
+  alias @test3 &> /dev/null || return 9
+  [ "$(test3)"  == "test3" ] || return 10
+  test3 &> /dev/null; [ $? -eq 3 ] || return 11 
+} && tsh__add_func test__decorate
+
+deco::defalias() {
+  #
+  # Takes a function name and declares an alias-decorator from it.
+  #
+  local _fun_name _alias_name _alias_declaration
+  _fun_name="${1:-$(io_existing_stdin)}"
+  _alias_name=$(deco::gen_alias_name "$_fun_name") || return 1
+  _alias_declaration=$(deco::gen_alias_declaration <<< "$_alias_name") || return 1
+  eval "$_alias_declaration"
+}
+
+test__defalias() {
+  local _func="deco::defalias"
+  $_func <<< "hello" || return 1
+  alias hello &> /dev/null && return 2
+  alias @hello &> /dev/null || return 3
+  ! $_func " hello world " || return 4
+} && tsh__add_func test__defalias
+
+
+deco::gen_alias_declaration() {
+  local _alias_name _alias_declaration
+  _alias_name="${1:-$(io_existing_stdin)}"
+  read -d '' _alias_declaration <<eod || :
+alias @${_alias_name}='read_funtemp; deco::defun <<< "\$funtemp"'
+eod
+  printf "$_alias_declaration\n"
+}
+
+test__gen_alias_declaration() {
+  local _func="deco::gen_alias_declaration"
+  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; deco::defun <<< "'"$funtemp"'"'" ] || return 1
+} && tsh__add_func test__gen_alias_declaration
+
+deco::gen_alias_name() {
+  #
+  # Formats the input to a suitable alias name.
+  #
+  local _oldname _newname
+  _oldname="${1:-$(io_existing_stdin)}"
+  _newname=$(
+    sed -r "
+      ## Remove multiple word lines
+      /\w+\s+\w+/d ;
+      ## Remove beginning spaces
+      s|^\s*||g ;
+      ## Remove trailing spaces
+      s|\s*$||g ;
+    " <<< "$_oldname"
+  )
+  printf "$_newname\n"
+  [ "${#_newname}" -gt 0 ] \
+   || return 1
+}
+
+test__gen_alias_name() {
+  local _func="deco::gen_alias_name"
+  [ "$($_func ' ')" == '' ] || return 1
+  [ "$($_func '')" == '' ] || return 1
+  [ "$($_func ' ')" == '' ] || return 2
+  [ "$($_func ' my-name')" == 'my-name' ] || return 3
+  [ "$($_func <<< ' _12some-other_name      ')" == '_12some-other_name' ] || return 4
+  [ "$($_func ' some composed names ')" == '' ] || return 5
+  [ "$($_func <<< ' some other_+composed names ')" == '' ] || return 6
+} && tsh__add_func test__gen_alias_name
+
+
+set +euf +o pipefail
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
