@@ -79,8 +79,8 @@ deco::defun() {
   #
   local _fun_template _fun_name _fun_recipe _fun_new
   _fun_template="${1:-$(io_existing_stdin)}"
-  _fun_name=$(deco::func_name "$_fun_template")
-  _fun_recipe=$(deco::func_recipe "$_fun_template")
+  _fun_name=$(deco::func_name "$_fun_template") || return 1
+  _fun_recipe=$(deco::func_recipe "$_fun_template") || return 1
   _fun_new=$(cat << eol
     ${_fun_name}() {
     ${_fun_recipe}
@@ -182,18 +182,48 @@ alias @decorate='read_funtemp; decorate <<< "$funtemp"'
 function decorate() {
   #
   # Takes a template function in input and declares it.
-  # Creates a decorator referencing it.
+  # Creates a decorator alias referencing it.
   #
   local _fun_template _fun_name _fun_recipe _fun_new
 
-  ## Declare function
-  _fun_template="${1:-$(io_existing_stdin)}"
-  deco::defun <<< "$_fun_template"
+  ## Declare function from template
+  _fun_template="${1:-$(io_existing_stdin)}" || return 1
+  deco::defun <<< "$_fun_template" || return 2
 
-  ## Declare alias
-  _fun_name=$(deco::func_name "$_fun_template")
-  deco::defalias <<< "$_fun_name"
+  ## Declare alias from function name
+  _fun_name=$(deco::func_name "$_fun_template") || return 3
+  deco::defalias <<< "$_fun_name" || return 4
 } 
+
+test__decorate() {
+  local _res
+
+  #
+  @decorate && return 1 || :
+  functionn test1() {
+  echo "in test1" && return 1
+}
+  declare -f test1 &> /dev/null && return 2 || :
+  alias @test1 &> /dev/null && return 3 || :
+
+  #
+  @decorate && return 4 || :
+  t test2() {
+    echo "test2" && return 2
+}
+  declare -f test2 &> /dev/null && return 5 || :
+  alias @test2 &> /dev/null && return 6 || :
+
+  #
+  @decorate || return 7
+     function test3() {
+    echo "test3" && return 3
+}
+  declare -f test3 &> /dev/null || return 8
+  alias @test3 &> /dev/null || return 9
+  [ "$(test3)"  == "test3" ] || return 10
+  test3 &> /dev/null; [ $? -eq 3 ] || return 11 
+} && tsh__add_func test__decorate
 
 deco::defalias() {
   #
