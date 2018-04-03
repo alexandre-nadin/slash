@@ -80,15 +80,22 @@ defun() {
   local _fun_template _fun_name _fun_recipe _fun_new
   _fun_template="${1:-$(io_existing_stdin)}"
   _fun_name=$(func_name "$_fun_template") || return 1
-  _fun_recipe=$(func_recipe "$_fun_template") || return 1
-  _fun_new=$(cat << eol
-    ${_fun_name}() {
-    ${_fun_recipe}
-  }
+  _fun_recipe=$(func_recipe "$_fun_template") || return 2
+  defun_name_recipe "$_fun_name" "$_fun_recipe" || return 3
+} 
+
+defun_name_recipe() {
+  #
+  # Declares a function from a name and a recipe given as input.
+  #
+  local _fun_new=$(cat << eol
+    ${1}() {
+      ${2}
+    }
 eol
 )
-  eval "${_fun_new}"
-} 
+  eval "${_fun_new}" || return 1
+}
 
 func_recipe() {
   #
@@ -120,7 +127,7 @@ func_name() {
    | sed -r "
        ## Remove function keyword
        s|^${FUNC_REGEX_KEYWORD}||g ;
-       ## Remove function's open block curly bracket
+       ## Remove function's opening block curly bracket
        s|${FUNC_REGEX_BLOC_OPEN}$||g ;
        ## Remove function's parenthesis
        s|${FUNC_REGEX_PARENTHESIS}$||g ;
@@ -250,14 +257,17 @@ gen_alias_declaration() {
   local _alias_name _alias_declaration
   _alias_name="${1:-$(io_existing_stdin)}"
   read -d '' _alias_declaration <<eod || :
-alias @${_alias_name}='read_funtemp; defun <<< "\$funtemp"'
+alias @${_alias_name}='read_funtemp; decorate "\$funtemp" "${_alias_name}"'
 eod
   printf "$_alias_declaration\n"
 }
 
 test__gen_alias_declaration() {
   local _func="gen_alias_declaration"
-  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; defun <<< "'"$funtemp"'"'" ] || return 1
+  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; decorate "'"$funtemp"'" "'" some name "'"'" ] || return 1
+
+  [ "$($_func ' some ' ' name ')" == "alias @ some ='read_funtemp; decorate "'"$funtemp"'" "'" some "'"'" ] || return 2
+
 } && tsh__add_func test__gen_alias_declaration
 
 gen_alias_name() {
@@ -292,6 +302,51 @@ test__gen_alias_name() {
   [ "$($_func <<< ' some other_+composed names ')" == '' ] || return 6
 } && tsh__add_func test__gen_alias_name
 
+
+# ----------
+# Decorate
+# ----------
+decorate() {
+  #
+  # Decorates first function with the second given as parameters.
+  #
+  # $1 is the decorable function template read from stdin. It will be parsed
+  # and declared.
+  #
+  # $2 is the decorating function name. It is expected to be already
+  # declared thanks to the declaring decorator '@decorator'.
+  #  
+  # The newly created inner decorable function is executed in a subshell. 
+  # We define and export that inner function name as '_func'. 
+  # It has to be directly used by the decorating function as is, and thus
+  # should not be overwritten or redefined as local.
+  #
+  local _decorable_name _decorable_recipe _decorator_name _decorable_inner
+  _decorable_name=$(func_name "$1") || return 1
+  _decorable_recipe=$(func_recipe "$1") || return 2
+
+  ## Here the decorator function has already been declared
+  _decorator_name="$2"
+  type -f "$_decorator_name" &> /dev/null || return 3
+
+  ## Declare the inner decorated function
+  _decorable_inner="_${_decorator_name}@${_decorable_name}"
+  defun_name_recipe \
+    "${_decorable_inner}" \
+    "${_decorable_recipe}"
+
+  ## Declare the new decorated function 
+  defun_name_recipe \
+    "${_decorable_name}" \
+    "$(cat << eol
+      (
+      export _func="${_decorable_inner}"
+      # Call decorator
+      ${_decorator_name} "\$@"
+      )
+eol
+    )"
+}
 
 set +euf +o pipefail
 
