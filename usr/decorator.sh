@@ -179,8 +179,8 @@ test__is_func_declaration() {
 # Define decorator
 # ------------------
 #alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
-alias @decorator='read_funtemp; decorator <<< "$funtemp"'
-function decorator() {
+alias @decorator='read_funtemp; defcorator <<< "$funtemp"'
+function defcorator() {
   #
   # Takes a template function in input and declares it.
   # Creates a decorator alias referencing it.
@@ -196,7 +196,7 @@ function decorator() {
   defalias <<< "$_fun_name" || return 4
 } 
 
-test__decorator() {
+test__defcorator() {
   local _res
 
   #
@@ -224,7 +224,7 @@ test__decorator() {
   alias @test3 &> /dev/null || return 9
   [ "$(test3)"  == "test3" ] || return 10
   test3 &> /dev/null; [ $? -eq 3 ] || return 11 
-} && tsh__add_func test__decorator
+} && tsh__add_func test__defcorator
 
 defalias() {
   #
