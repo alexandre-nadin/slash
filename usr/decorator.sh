@@ -80,15 +80,22 @@ defun() {
   local _fun_template _fun_name _fun_recipe _fun_new
   _fun_template="${1:-$(io_existing_stdin)}"
   _fun_name=$(func_name "$_fun_template") || return 1
-  _fun_recipe=$(func_recipe "$_fun_template") || return 1
-  _fun_new=$(cat << eol
-    ${_fun_name}() {
-    ${_fun_recipe}
-  }
+  _fun_recipe=$(func_recipe "$_fun_template") || return 2
+  defun_name_recipe "$_fun_name" "$_fun_recipe" || return 3
+} 
+
+defun_name_recipe() {
+  #
+  # Declares a function from a name and a recipe given as input.
+  #
+  local _fun_new=$(cat << eol
+    ${1}() {
+      ${2}
+    }
 eol
 )
-  eval "${_fun_new}"
-} 
+  eval "${_fun_new}" || return 1
+}
 
 func_recipe() {
   #
@@ -120,7 +127,7 @@ func_name() {
    | sed -r "
        ## Remove function keyword
        s|^${FUNC_REGEX_KEYWORD}||g ;
-       ## Remove function's open block curly bracket
+       ## Remove function's opening block curly bracket
        s|${FUNC_REGEX_BLOC_OPEN}$||g ;
        ## Remove function's parenthesis
        s|${FUNC_REGEX_PARENTHESIS}$||g ;
@@ -174,12 +181,13 @@ test__is_func_declaration() {
   ! $_func " function -_hle-lo due () {  " || return 6
 } && tsh__add_func test__is_func_declaration
 
+
 # ------------------
 # Define decorator
 # ------------------
 #alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
-alias @decorate='read_funtemp; decorate <<< "$funtemp"'
-function decorate() {
+alias @decorator='read_funtemp; defcorator <<< "$funtemp"'
+function defcorator() {
   #
   # Takes a template function in input and declares it.
   # Creates a decorator alias referencing it.
@@ -195,11 +203,11 @@ function decorate() {
   defalias <<< "$_fun_name" || return 4
 } 
 
-test__decorate() {
+test__defcorator() {
   local _res
 
   #
-  @decorate && return 1 || :
+  @decorator && return 1 || :
   functionn test1() {
   echo "in test1" && return 1
 }
@@ -207,7 +215,7 @@ test__decorate() {
   alias @test1 &> /dev/null && return 3 || :
 
   #
-  @decorate && return 4 || :
+  @decorator && return 4 || :
   t test2() {
     echo "test2" && return 2
 }
@@ -215,7 +223,7 @@ test__decorate() {
   alias @test2 &> /dev/null && return 6 || :
 
   #
-  @decorate || return 7
+  @decorator || return 7
      function test3() {
     echo "test3" && return 3
 }
@@ -223,7 +231,7 @@ test__decorate() {
   alias @test3 &> /dev/null || return 9
   [ "$(test3)"  == "test3" ] || return 10
   test3 &> /dev/null; [ $? -eq 3 ] || return 11 
-} && tsh__add_func test__decorate
+} && tsh__add_func test__defcorator
 
 defalias() {
   #
@@ -233,6 +241,7 @@ defalias() {
   _fun_name="${1:-$(io_existing_stdin)}" || return 1
   _alias_name=$(gen_alias_name "$_fun_name") || return 2
   _alias_declaration=$(gen_alias_declaration <<< "$_alias_name") || return 3
+  #echo eval "$_alias_declaration" || return 4
   eval "$_alias_declaration" || return 4
 }
 
@@ -249,14 +258,17 @@ gen_alias_declaration() {
   local _alias_name _alias_declaration
   _alias_name="${1:-$(io_existing_stdin)}"
   read -d '' _alias_declaration <<eod || :
-alias @${_alias_name}='read_funtemp; defun <<< "\$funtemp"'
+alias @${_alias_name}='read_funtemp; decorate "\$funtemp" "${_alias_name}"'
 eod
   printf "$_alias_declaration\n"
 }
 
 test__gen_alias_declaration() {
   local _func="gen_alias_declaration"
-  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; defun <<< "'"$funtemp"'"'" ] || return 1
+  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; decorate "'"$funtemp"'" "'" some name "'"'" ] || return 1
+
+  [ "$($_func ' some ' ' name ')" == "alias @ some ='read_funtemp; decorate "'"$funtemp"'" "'" some "'"'" ] || return 2
+
 } && tsh__add_func test__gen_alias_declaration
 
 gen_alias_name() {
@@ -291,6 +303,85 @@ test__gen_alias_name() {
   [ "$($_func <<< ' some other_+composed names ')" == '' ] || return 6
 } && tsh__add_func test__gen_alias_name
 
+
+# ----------
+# Decorate
+# ----------
+decorate() {
+  #
+  # Decorates first function with the second given as parameters.
+  #
+  # $1 is the decorable function template read from stdin. It will be parsed,
+  # declared, then decorated with $2.
+  #
+  # $2 is the decorating function name. It is expected to be already
+  # declared thanks to the declaring decorator '@decorator'.
+  #  
+  # The inner decorable function is declared and its name is exported as '_func_decorable'.
+  #
+  # The inner decorated function, which is the decorable function that has been
+  # decorated with the decorating function, is declared and its name is exported
+  # as '_func_decorated'. 
+  #
+  # Those two exported function names are to be used as is in the decorator
+  # function's recipe. As such, programmer should pay attention not overwritting
+  # them (variable assignemnt, unset, local, etc).
+  #
+  local _decorator_name _decorated_name _decorable_name _decorable_recipe 
+  #_decorable_name=$(func_name "$1") || return 1
+  _decorated_name=$(func_name "$1") || return 1
+  _decorable_recipe=$(func_recipe "$1") || return 2
+
+  ## Here the decorator function has already been declared
+  _decorator_name="$2"
+  declare -f "$_decorator_name" &> /dev/null || return 3
+
+  ## Declare the inner decorable function
+  _decorable_name="_${_decorator_name}@${_decorated_name}"
+  defun_name_recipe \
+    "${_decorable_name}" \
+    "${_decorable_recipe}"
+
+
+  ## Declare the new decorated function 
+  defun_name_recipe \
+    "${_decorated_name}" \
+    "$(cat << eol
+      (
+      ## Export inner function names
+      export _func_decorated="${_decorated_name}"
+      export _func_decorable="${_decorable_name}"
+      export _func_decorator="${_decorator_name}"
+
+      # Call decorator
+      ${_decorator_name} "\$@"
+      )
+eol
+    )"
+
+}
+
+test__decorate() {
+  ## Declare f0 as a decorator.
+  #shopt -s expand_aliases
+  #type -a @decorator
+  @decorator || return 1
+  f0() {
+    local _ret _res
+    _res=$("${_func_decorable}" "$@")
+    _ret=$?
+    echo "'${FUNCNAME}' @ '${_func_decorable}' -> '_'${FUNCNAME}@${_func_decorable}'"
+}
+  alias @f0 &> /dev/null || return 2
+
+  ## Declare and decorate f1 with f0
+  eval "@f0 || return 3
+  f1() { 
+    return 7
+}"
+
+
+} && tsh__add_func test__decorate
 
 set +euf +o pipefail
 
