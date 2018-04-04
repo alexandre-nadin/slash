@@ -241,6 +241,7 @@ defalias() {
   _fun_name="${1:-$(io_existing_stdin)}" || return 1
   _alias_name=$(gen_alias_name "$_fun_name") || return 2
   _alias_declaration=$(gen_alias_declaration <<< "$_alias_name") || return 3
+  #echo eval "$_alias_declaration" || return 4
   eval "$_alias_declaration" || return 4
 }
 
@@ -310,43 +311,77 @@ decorate() {
   #
   # Decorates first function with the second given as parameters.
   #
-  # $1 is the decorable function template read from stdin. It will be parsed
-  # and declared.
+  # $1 is the decorable function template read from stdin. It will be parsed,
+  # declared, then decorated with $2.
   #
   # $2 is the decorating function name. It is expected to be already
   # declared thanks to the declaring decorator '@decorator'.
   #  
-  # The newly created inner decorable function is executed in a subshell. 
-  # We define and export that inner function name as '_func'. 
-  # It has to be directly used by the decorating function as is, and thus
-  # should not be overwritten or redefined as local.
+  # The inner decorable function is declared and its name is exported as '_func_decorable'.
   #
-  local _decorable_name _decorable_recipe _decorator_name _decorable_inner
-  _decorable_name=$(func_name "$1") || return 1
+  # The inner decorated function, which is the decorable function that has been
+  # decorated with the decorating function, is declared and its name is exported
+  # as '_func_decorated'. 
+  #
+  # Those two exported function names are to be used as is in the decorator
+  # function's recipe. As such, programmer should pay attention not overwritting
+  # them (variable assignemnt, unset, local, etc).
+  #
+  local _decorator_name _decorated_name _decorable_name _decorable_recipe 
+  #_decorable_name=$(func_name "$1") || return 1
+  _decorated_name=$(func_name "$1") || return 1
   _decorable_recipe=$(func_recipe "$1") || return 2
 
   ## Here the decorator function has already been declared
   _decorator_name="$2"
-  type -f "$_decorator_name" &> /dev/null || return 3
+  declare -f "$_decorator_name" &> /dev/null || return 3
 
-  ## Declare the inner decorated function
-  _decorable_inner="_${_decorator_name}@${_decorable_name}"
+  ## Declare the inner decorable function
+  _decorable_name="_${_decorator_name}@${_decorated_name}"
   defun_name_recipe \
-    "${_decorable_inner}" \
+    "${_decorable_name}" \
     "${_decorable_recipe}"
+
 
   ## Declare the new decorated function 
   defun_name_recipe \
-    "${_decorable_name}" \
+    "${_decorated_name}" \
     "$(cat << eol
       (
-      export _func="${_decorable_inner}"
+      ## Export inner function names
+      export _func_decorated="${_decorated_name}"
+      export _func_decorable="${_decorable_name}"
+      export _func_decorator="${_decorator_name}"
+
       # Call decorator
       ${_decorator_name} "\$@"
       )
 eol
     )"
+
 }
+
+test__decorate() {
+  ## Declare f0 as a decorator.
+  #shopt -s expand_aliases
+  #type -a @decorator
+  @decorator || return 1
+  f0() {
+    local _ret _res
+    _res=$("${_func_decorable}" "$@")
+    _ret=$?
+    echo "'${FUNCNAME}' @ '${_func_decorable}' -> '_'${FUNCNAME}@${_func_decorable}'"
+}
+  alias @f0 &> /dev/null || return 2
+
+  ## Declare and decorate f1 with f0
+  eval "@f0 || return 3
+  f1() { 
+    return 7
+}"
+
+
+} && tsh__add_func test__decorate
 
 set +euf +o pipefail
 
