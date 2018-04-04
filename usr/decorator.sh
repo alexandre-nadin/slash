@@ -71,7 +71,6 @@ alias stdin_or_readfun="io_existing_stdin || readfun"
 alias read_funtemp_stdin="funtemp=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' funtemp <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read'
-alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
 
 defun() {
   #
@@ -185,7 +184,6 @@ test__is_func_declaration() {
 # ------------------
 # Define decorator
 # ------------------
-#alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
 alias @decorator='read_funtemp; defcorator <<< "$funtemp"'
 function defcorator() {
   #
