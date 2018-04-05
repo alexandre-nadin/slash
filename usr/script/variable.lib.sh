@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-
 function vars_enum() {
   #
   # Declares and enumerates all the given variable names from 0.
@@ -21,3 +20,25 @@ function vars__default_export() {
     eval "export $_var=\${!_var:-}"
   done
 }
+
+vars__swap_vars() {
+  #
+  # Takes two variable names and swaps their content.
+  #
+  [ $# -eq 2 ] || return 1
+  local _temp="$1"
+  eval "$1=${!2} && $2=${!_temp}" || return 2
+}
+
+test__swap_vars() {
+  local _func="vars__swap_vars"
+  local one=1 two=2
+  $_func ; [ $? -eq 1 ]               || return 1
+  $_func one; [ $? -eq 1 ]            || return 2
+  [ "$one" == "1" ]                   || return 3
+  [ "$two" == "2" ]                   || return 4
+  $_func one two                      || return 5
+  [ "$one" == "2" ]                   || return 6
+  [ "$two" == "1" ]                   || return 7
+}
+
