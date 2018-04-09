@@ -2,6 +2,8 @@
 source logging.lib
 source testsh.lib 
 source io.lib
+source variable.lib
+source array-ref.lib
 
 # --------------
 # Requirements
@@ -87,13 +89,17 @@ defun_name_recipe() {
   #
   # Declares a function from a name and a recipe given as input.
   #
-  local _fun_new=$(cat << eol
+  local _fun_new=$(build_name_recipe "$@") || return 1
+  eval "${_fun_new}" || return 2
+}
+
+build_name_recipe() {
+  [ $# -eq 2 ] || return 1
+  cat << eol 
     ${1}() {
       ${2}
     }
 eol
-)
-  eval "${_fun_new}" || return 1
 }
 
 func_recipe() {
@@ -381,20 +387,160 @@ test__decorate() {
 
 } && tsh__add_func test__decorate
 
+
+# ----------
+# DecorateX
+# ----------
+## Reads stdin function that follows.
+# Decorates it with the given existing function names following the decorator.
+alias @decorateX='read_funtemp; decorateX "$funtemp"'
+
+decorateX() {
+  #
+  # f0() { echo "in f0, using $_func_decorated (f2@f0)"; }
+  #
+  # @decorateX f0
+  # f1() { echo original f1; }
+  #
+  # f0 is already declared
+  # f1 is declared as the decorated function:
+  #
+  # 
+  # f2@f1 is declared as the decorable function
+  #f1 -> f1      decorator -> func_decorator
+  #@decorateX f1
+  #f2() -> f2()  decorable -> func_decorable
+  #        f1@f2 decorated -> func_decorated
+  echo -e "\n[$FUNCNAME]"
+  ## Declare vars
+  local _decorable_template _decorated_name _decorable_recipe \
+        _decorated_name _decorable_name _decorable_recipe \
+        _decorator_names _decorator_name \
+        _decorable_declaration _decorated_declaration
+  _decorable_template="$1"               && shift           || return 1
+  _decorable_name=$(func_name "$_decorable_template")       || return 2
+  _decorable_recipe=$(func_recipe "$_decorable_template")   || return 3
+  _decorated_name="$_decorable_name"
+  _decorator_names=("$@")
+
+  ## If no decorator, don't declare anything and return error.
+  [ ${#_decorator_names[@]} -gt 0 ]                         || return 4
+  
+  ## Take last decorator
+  #_decorator_name="${_decorator_names[0]}"
+  echo "decorators: '${_decorator_names[@]}'."
+  _decorator_name="${_decorator_names[$(( ${#_decorator_names[@]} - 1  ))]}"
+  arrr_pop _decorator_names
+  echo "decorators: '${_decorator_names[@]}'."
+  echo "decorating '$_decorable_name' with '$_decorator_name' (decorators left: '${_decorator_names[@]}') ..."
+
+  ## The decorator function should already have been declared
+  declare -f "$_decorator_name" &> /dev/null                || return 5
+
+  ## Redefine the inner decorable function name that will be used by the
+  # decorator
+  _decorable_name="${_decorable_name}@${_decorator_name}"
+  echo "_decorable_name: '$_decorable_name'"
+
+  ## Declare the inner decorable function if not already exists
+  _decorable_declaration=$(build_name_recipe \
+    "${_decorable_name}" \
+    "${_decorable_recipe}") \
+  || return 6
+
+  echo "_decorable_declaration: '$_decorable_declaration'"
+  [ declare -f "$_decorable_name" &> /dev/null ] \
+  || defun_name_recipe \
+      "${_decorable_name}" \
+      "${_decorable_recipe}" \
+  || return 7
+
+
+  ## Declare the new decorated function 
+#  defun_name_recipe \
+#    "${_decorated_name}" \
+#    "$(cat << eol
+#      (
+#      ## Export inner function names
+#      export _func_decorable="${_decorable_name}"
+#      export _func_decorator="${_decorator_name}"
+#      export _func_decorated="${_decorated_name}"
+#
+#      # Call decorator
+#      ${_decorator_name} "\$@"
+#      )
+#eol
+#    )" \
+#    || return 8
+  _decorated_declaration=$(build_name_recipe \
+    "${_decorated_name}" \
+    "$(cat << eol
+      (
+      ## Export inner function names
+      export _func_decorable="${_decorable_name}"
+      export _func_decorator="${_decorator_name}"
+      export _func_decorated="${_decorated_name}"
+
+      # Call decorator
+      ${_decorator_name} "\$@"
+      )
+eol
+    )" \
+  ) \
+  || return 8
+
+  defun "$_decorated_declaration" \
+  || return 9
+
+  ## Decorate recursively
+  decorateX "$_decorated_declaration" "${_decorator_names[@]}"
+}
+
+test__decorateX() {
+  ## Declare f0 as a decorator.
+  #shopt -s expand_aliases
+  #type -a @decorator
+  f0() {
+    local _ret _res
+    #_res=$("${_func_decorated}" "$@")
+    #_ret=$?
+    echo "'${_func_decorated}' @ '${FUNCNAME}' -> '${_func_decorable}'"
+  } || return 1
+
+  ## Declare and decorate f1 with f0
+  @decorateX && return 2
+  f1() {
+    return 71
+}
+
+  @decorateX f0 || return 3
+  f2() { 
+    return 72
+}
+
+  #local _decl=$(cat << eol
+  #f3() {
+  #  return 73
+#}
+#eol
+#)
+
+#  echo "$_decl" | @decorateX || return 4
+
+  
+
+} && tsh__add_func test__decorateX
+
+
 set +euf +o pipefail
 
 
-
-
-
-
-
-
-
-
-
-
-
+decorateY() {
+  #
+  # Takes a function template and decorates it with the one given function name.
+  #
+  :
+}
 
 
 
