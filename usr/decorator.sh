@@ -2,6 +2,8 @@
 source logging.lib
 source testsh.lib 
 source io.lib
+source variable.lib
+source array-ref.lib
 
 # --------------
 # Requirements
@@ -70,39 +72,46 @@ DECORATOR_LIMIT_REGEX="^\s*${DECORATOR_LIMIT}\s*$"
 alias stdin_or_readfun="io_existing_stdin || readfun"
 alias read_funtemp_stdin="funtemp=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' funtemp <<'${DECORATOR_LIMIT}'"
-alias read_funtemp='read_funtemp_stdin || read_funtemp_read'
-alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
+alias read_funtemp='read_funtemp_stdin || read_funtemp_read || :'
 
 defun() {
   #
-  # Takes a template function in input and declares it.
+  # Takes a function declaration in input and declares it.
   #
-  local _fun_template _fun_name _fun_recipe _fun_new
-  _fun_template="${1:-$(io_existing_stdin)}"
-  _fun_name=$(func_name "$_fun_template") || return 1
-  _fun_recipe=$(func_recipe "$_fun_template") || return 2
-  defun_name_recipe "$_fun_name" "$_fun_recipe" || return 3
-} 
+  local _fun_declaration=${1:-$(io_existing_stdin)}
+  is_func_declaration "$_fun_declaration"      || return 1
+ 
+  eval "$_fun_declaration"                    || return 2 
+}
 
 defun_name_recipe() {
   #
   # Declares a function from a name and a recipe given as input.
   #
-  local _fun_new=$(cat << eol
+  local _fun_new=$(build_name_recipe_declaration "$@") || return 1
+  defun "$_fun_new" || return 2
+}
+
+build_name_recipe_declaration() {
+  #
+  # Takes a function name and its recipe.
+  # Outputs the function's declaration string.
+  #
+  [ $# -eq 2 ] || return 1
+  cat << eol 
     ${1}() {
       ${2}
     }
 eol
-)
-  eval "${_fun_new}" || return 1
 }
 
 func_recipe() {
   #
-  # Retrieves the recipe of the given function declaration
+  # Retrieves the recipe of the given function declaration.
   #
-  is_func_declaration "$1" \
-  && tail -n +2 <<< "$1" \
+  local _func_declaration="${1:-io_existing_stdin}"
+  is_func_declaration "$_func_declaration" \
+  && tail -n +2 <<< "$_func_declaration" \
    | sed -r " 
        ## Remove empty lines
        /^\s*$/d ;
@@ -119,11 +128,11 @@ test__func_recipe() {
 
 func_name() {
   #
-  # Retrieves the name of the given function declaration
-  # Assumes 'is_func_declaration' has been tested before.
+  # Retrieves the name of the given function declaration.
   #
-  is_func_declaration "$1" \
-  && head -n 1 <<< "$1" \
+  local _func_declaration="${1:-io_existing_stdin}"
+  is_func_declaration "$_func_declaration" \
+  && head -n 1 <<< "$_func_declaration" \
    | sed -r "
        ## Remove function keyword
        s|^${FUNC_REGEX_KEYWORD}||g ;
@@ -182,223 +191,255 @@ test__is_func_declaration() {
 } && tsh__add_func test__is_func_declaration
 
 
-# ------------------
-# Define decorator
-# ------------------
-#alias @dec-defun='read_funtemp; defun <<< "$funtemp"' 
-alias @decorator='read_funtemp; defcorator <<< "$funtemp"'
-function defcorator() {
-  #
-  # Takes a template function in input and declares it.
-  # Creates a decorator alias referencing it.
-  #
-  local _fun_template _fun_name _fun_recipe _fun_new
-
-  ## Declare function from template
-  _fun_template="${1:-$(io_existing_stdin)}" || return 1
-  defun <<< "$_fun_template" || return 2
-
-  ## Declare alias from function name
-  _fun_name=$(func_name "$_fun_template") || return 3
-  defalias <<< "$_fun_name" || return 4
-} 
-
-test__defcorator() {
-  local _res
-
-  #
-  @decorator && return 1 || :
-  functionn test1() {
-  echo "in test1" && return 1
-}
-  declare -f test1 &> /dev/null && return 2 || :
-  alias @test1 &> /dev/null && return 3 || :
-
-  #
-  @decorator && return 4 || :
-  t test2() {
-    echo "test2" && return 2
-}
-  declare -f test2 &> /dev/null && return 5 || :
-  alias @test2 &> /dev/null && return 6 || :
-
-  #
-  @decorator || return 7
-     function test3() {
-    echo "test3" && return 3
-}
-  declare -f test3 &> /dev/null || return 8
-  alias @test3 &> /dev/null || return 9
-  [ "$(test3)"  == "test3" ] || return 10
-  test3 &> /dev/null; [ $? -eq 3 ] || return 11 
-} && tsh__add_func test__defcorator
-
-defalias() {
-  #
-  # Takes a function name and declares an alias-decorator from it.
-  #
-  local _fun_name _alias_name _alias_declaration
-  _fun_name="${1:-$(io_existing_stdin)}" || return 1
-  _alias_name=$(gen_alias_name "$_fun_name") || return 2
-  _alias_declaration=$(gen_alias_declaration <<< "$_alias_name") || return 3
-  #echo eval "$_alias_declaration" || return 4
-  eval "$_alias_declaration" || return 4
-}
-
-test__defalias() {
-  local _func="defalias"
-  $_func <<< "hello" || return 1
-  alias hello &> /dev/null && return 2
-  alias @hello &> /dev/null || return 3
-  ! $_func " hello world " || return 4
-} && tsh__add_func test__defalias
-
-
-gen_alias_declaration() {
-  local _alias_name _alias_declaration
-  _alias_name="${1:-$(io_existing_stdin)}"
-  read -d '' _alias_declaration <<eod || :
-alias @${_alias_name}='read_funtemp; decorate "\$funtemp" "${_alias_name}"'
-eod
-  printf "$_alias_declaration\n"
-}
-
-test__gen_alias_declaration() {
-  local _func="gen_alias_declaration"
-  [ "$($_func ' some name ')" == "alias @ some name ='read_funtemp; decorate "'"$funtemp"'" "'" some name "'"'" ] || return 1
-
-  [ "$($_func ' some ' ' name ')" == "alias @ some ='read_funtemp; decorate "'"$funtemp"'" "'" some "'"'" ] || return 2
-
-} && tsh__add_func test__gen_alias_declaration
-
-gen_alias_name() {
-  #
-  # Formats the input to a suitable alias name.
-  #
-  local _oldname _newname
-  _oldname="${1:-$(io_existing_stdin)}"
-  _newname=$(
-    sed -r "
-      ## Remove multiple word lines
-      /\w+\s+\w+/d ;
-      ## Remove beginning spaces
-      s|^\s*||g ;
-      ## Remove trailing spaces
-      s|\s*$||g ;
-    " <<< "$_oldname"
-  )
-  printf "$_newname\n"
-  [ "${#_newname}" -gt 0 ] \
-   || return 1
-}
-
-test__gen_alias_name() {
-  local _func="gen_alias_name"
-  [ "$($_func ' ')" == '' ] || return 1
-  [ "$($_func '')" == '' ] || return 1
-  [ "$($_func ' ')" == '' ] || return 2
-  [ "$($_func ' my-name')" == 'my-name' ] || return 3
-  [ "$($_func <<< ' _12some-other_name      ')" == '_12some-other_name' ] || return 4
-  [ "$($_func ' some composed names ')" == '' ] || return 5
-  [ "$($_func <<< ' some other_+composed names ')" == '' ] || return 6
-} && tsh__add_func test__gen_alias_name
-
-
 # ----------
 # Decorate
 # ----------
+## Reads stdin function that follows.
+# Decorates it with the given existing function names following the decorator.
+alias @decorate='read_funtemp && decorate "$funtemp"'
+
+function is_alias() {
+  alias "$1" &> /dev/null 
+}
+
+function is_function() {
+  declare -f "$1" &> /dev/null
+}
+
 decorate() {
   #
-  # Decorates first function with the second given as parameters.
+  # Takes a function template and function names in input.
+  # Declares the template function and recursively decorates it with each
+  # successive function name. Each decorating functon name should exist.
+  # 
+  # Expects at least one decorator.
   #
-  # $1 is the decorable function template read from stdin. It will be parsed,
-  # declared, then decorated with $2.
+  # The inner decorable function is declared and its name is exported as 
+  # '_func_decorable'. This variable shall then be used in the decorating
+  # function. This variable is cruial for decorating functions and is to be 
+  # used as is in the decorator function's recipe. As such, programmer should
+  # pay attention not to overwrite them (variable assignemnt, unset, local, etc).
   #
-  # $2 is the decorating function name. It is expected to be already
-  # declared thanks to the declaring decorator '@decorator'.
-  #  
-  # The inner decorable function is declared and its name is exported as '_func_decorable'.
+  # Two other variables, '_func_decorated' and '_func_decorator', are exported
+  # too for information purpose.
   #
-  # The inner decorated function, which is the decorable function that has been
-  # decorated with the decorating function, is declared and its name is exported
-  # as '_func_decorated'. 
   #
-  # Those two exported function names are to be used as is in the decorator
-  # function's recipe. As such, programmer should pay attention not overwritting
-  # them (variable assignemnt, unset, local, etc).
-  #
-  local _decorator_name _decorated_name _decorable_name _decorable_recipe 
-  #_decorable_name=$(func_name "$1") || return 1
-  _decorated_name=$(func_name "$1") || return 1
-  _decorable_recipe=$(func_recipe "$1") || return 2
+  ## Declare local variables
+  local _vars=(\
+    _decorable_template
+    _decorable_name
+    _decorable_recipe 
+    _decorable_declaration
+    _decorated_name 
+    _decorable_recipe
+    _decorated_name
+    _decorated_declaration
+    _decorator_names
+    _decorator_name)
+  local ${_vars[@]}
+  _decorable_template="$1"               && shift               || return 1
+  _decorable_name=$(func_name "$_decorable_template")           || return 2
+  _decorable_recipe=$(func_recipe "$_decorable_template")       || return 3
+  _decorated_name="$_decorable_name"
+  _decorator_names=("$@")
 
-  ## Here the decorator function has already been declared
-  _decorator_name="$2"
-  declare -f "$_decorator_name" &> /dev/null || return 3
+  ## If no decorator, don't declare anything and return error.
+  [ ${#_decorator_names[@]} -gt 0 ]                             || return 4
+  
+  ## Take last decorator
+  _decorator_name="${_decorator_names[$(( ${#_decorator_names[@]} - 1  ))]}"
+  arrr_pop _decorator_names &> /dev/null
 
-  ## Declare the inner decorable function
-  _decorable_name="_${_decorator_name}@${_decorated_name}"
-  defun_name_recipe \
+  ## The decorator function should already have been declared
+  declare -f "$_decorator_name" &> /dev/null                    || return 5
+
+  ## Redefine the inner decorable function that will be used by the decorator
+  _decorable_name=$(build_decorable_function_name \
     "${_decorable_name}" \
-    "${_decorable_recipe}"
+    "${_decorator_name}")                                       || return 6
 
+  ## Declare the inner decorable function if not already exists
+  _decorable_declaration=$(build_name_recipe_declaration \
+    "${_decorable_name}" \
+    "${_decorable_recipe}")                                     || return 7
+
+  [ declare -f "$_decorable_name" &> /dev/null ] \
+  || defun_name_recipe \
+      "${_decorable_name}" \
+      "${_decorable_recipe}"                                    || return 8
 
   ## Declare the new decorated function 
-  defun_name_recipe \
+  _decorated_declaration=$(build_name_recipe_declaration \
     "${_decorated_name}" \
     "$(cat << eol
       (
       ## Export inner function names
-      export _func_decorated="${_decorated_name}"
       export _func_decorable="${_decorable_name}"
       export _func_decorator="${_decorator_name}"
+      export _func_decorated="${_decorated_name}"
 
       # Call decorator
       ${_decorator_name} "\$@"
       )
 eol
-    )"
+    )" \
+  )                                                             || return 9
 
+  defun "$_decorated_declaration"                               || return 10
+
+  ## Decorate recursively
+  decorate "$_decorated_declaration" "${_decorator_names[@]}"   || :
 }
 
 test__decorate() {
-  ## Declare f0 as a decorator.
-  #shopt -s expand_aliases
-  #type -a @decorator
-  @decorator || return 1
-  f0() {
-    local _ret _res
-    _res=$("${_func_decorable}" "$@")
-    _ret=$?
-    echo "'${FUNCNAME}' @ '${_func_decorable}' -> '_'${FUNCNAME}@${_func_decorable}'"
+  # ----------------
+  # Positive tests
+  # ----------------
+  tag-div() {
+    local _res _ret
+    _res=$("$_func_decorable" "$@") || _ret=$?
+    printf "<div>${_res}</div>\n"
+    return $_ret
+  }
+ 
+  tag-p() {
+    local _res _ret
+    _res=$("$_func_decorable" "$@") || _ret=$?
+    printf "<p>${_res}</p>\n"
+    return $_ret
+  }
+
+  tag-strong() {
+    local _res _ret
+    _res=$("$_func_decorable" "$@") || _ret=$?
+    printf "<strong>${_res}</strong>\n"
+    return ${_ret:-$?}
+  }
+
+  @decorate \
+  tag-div \
+  tag-p tag-strong || return 3
+  hello() {
+    echo "Hello user"
 }
-  alias @f0 &> /dev/null || return 2
 
-  ## Declare and decorate f1 with f0
-  eval "@f0 || return 3
-  f1() { 
-    return 7
-}"
+  is_function hello                                             || return 4
+  is_function hello@tag-strong                                  || return 5
+  is_function hello@tag-p                                       || return 6
+  is_function hello@tag-div                                     || return 7
+  [ "$(hello)" == "<div><p><strong>Hello user</strong></p></div>" ] \
+                                                                || return 8
+  unset -f hello hello@tag-strong hello@tag-p hello@tag-div
 
+  # ----------------
+  # Negative tests
+  # ----------------
+  @decorate                                                     && return 1 || :
+  hello_no_deco() {
+    echo "hello $USER"
+}
+  !  is_function hello_no_deco                                  || return 2 
+
+  # ----- 
+  wrong_decorable_return() {
+    local _res _ret
+    _res=$("$_func_decorable" "$@") || _ret=$?
+    printf "<wrong>${_res}</wrong>\n"
+    return ${_ret:-$?}
+  }
+
+  @decorate wrong_decorable_return
+  hello_wdr() {
+    echo "Hello"
+    return 1
+}
+
+  is_function hello_wdr                                         || return 9
+  is_function hello_wdr@wrong_decorable_return                  || return 10
+  hello_wdr &> /dev/null
+  [ $? -eq 1 ]                                                  || return 11
+ 
+  # ----- 
+  wrong_decorable_name() {
+    local _res _ret
+    _res=$("$_non_existent_func_decorable" "$@") || _ret=$?
+    printf "<wrong>${_res}</wrong>\n"
+    return ${_ret:-$?}
+  }
+
+  @decorate wrong_decorable_name 
+  hello_wdn() {
+    echo "Hello"
+}
+
+  ! hello_wdn &> /dev/null                                      || return 12
+
+  # ----
+  wrong_decorator_cmd() {
+    local _res _ret
+    _res=$("$_func_decorable" "$@") || _ret=$?
+    wrong_deco_cmd "<wrong_deco_cmd>${_res}</wrong_deco_cmd>\n" \
+      2> /dev/null
+    return ${_ret:-$?}
+  }
+
+  @decorate wrong_decorator_cmd
+  hello_wdc() {
+    echo "Hello"
+}
+  [ "$(hello_wdc)" == "" ]                                      || return 13
+  hello_wdc &> /dev/null; [ $? -eq 127 ]                        || return 14
 
 } && tsh__add_func test__decorate
 
+test__decorateX() {
+  ## Declare f0 as a decorator.
+  #shopt -s expand_aliases
+  #type -a @decorator
+  f0() {
+    local _ret _res
+    #_res=$("${_func_decorated}" "$@")
+    #_ret=$?
+    echo "'${_func_decorated}' @ '${FUNCNAME}' -> '${_func_decorable}'"
+  } || return 1
+
+  ## Declare and decorate f1 with f0
+  @decorate && return 2
+  f1() {
+    return 71
+}
+
+  @decorate f0 || return 3
+  f2() { 
+    return 72
+}
+
+  #local _decl=$(cat << eol
+  #f3() {
+  #  return 73
+#}
+#eol
+#)
+
+#  echo "$_decl" | @decorateX || return 4
+
+  
+
+} #&& tsh__add_func test__decorateX
+
+
+build_decorable_function_name() {  
+  [ $# -eq 2 ] || return 1               
+  printf "${1}@${2}\n"                   
+}                                        
+
+test__build_decorable_function_name() {
+  local _func="build_decorable_function_name"
+  ! $($_func one)                                               || return 1
+  ! $($_func one two three)                                     || return 2
+  [ "$($_func one two)" == "one@two" ]                          || return 3
+  
+} #&& tsh__add_func test__build_decorable_function_name
+
+
 set +euf +o pipefail
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
