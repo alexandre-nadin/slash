@@ -79,9 +79,8 @@ defun() {
   # Takes a function declaration in input and declares it.
   #
   local _fun_declaration=${1:-$(io_existing_stdin)}
-  is_func_declaration "$_fun_declaration"      || return 1
- 
-  eval "$_fun_declaration"                    || return 2 
+  is_func_declaration "$_fun_declaration"                       || return 1
+  eval "$_fun_declaration"                                      || return 2 
 }
 
 defun_name_recipe() {
@@ -120,6 +119,7 @@ eol
 
   [ "$_test_string" == "$_res" ]                                || return 2
   ! $_func "hello"                                              || return 3
+  ! $_func "hello" "param1" "param2"                            || return 4
    
 } && tsh__add_func test__build_name_recipe_declaration
 
@@ -139,10 +139,39 @@ func_recipe() {
 }
 
 test__func_recipe() {
-  #local _func="func_name"
-  #[ "$($_func ' function hello () { ')" == 'hello' ] || return 1
-  :
+  local _func="func_recipe" _test_func_declaration
+ 
+  # ---
+  # Normal declaration
+  _test_func_declaration=$(build_name_recipe_declaration \
+    "Hello" \
+    "echo 'Hello world!'")                                      || return 1
+  _func_recipe=$($_func "$_test_func_declaration")
+  [ "$_func_recipe" == "  echo 'Hello world!'" ]                || return 2
+
+  # ---
+  ! build_name_recipe_declaration \
+    "" \
+    "Hello" \
+    "echo 'Hello world!'" \
+     &> /dev/null                                               || return 3
+
+  # --
+  # Declare first empty line
+  _test_func_declaration=$(build_name_recipe_declaration \
+    "$(cat << eol
+
+Hello
+eol
+)" \
+    "echo 'Hello world2"
+   )                                                            || return 4
+
+  # Test first line
+  ! $_func "$_test_func_declaration"                            || return 5  
+  
 } && tsh__add_func test__func_recipe
+
 
 func_name() {
   #
