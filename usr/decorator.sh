@@ -79,9 +79,8 @@ defun() {
   # Takes a function declaration in input and declares it.
   #
   local _fun_declaration=${1:-$(io_existing_stdin)}
-  is_func_declaration "$_fun_declaration"      || return 1
- 
-  eval "$_fun_declaration"                    || return 2 
+  is_func_declaration "$_fun_declaration"                       || return 1
+  eval "$_fun_declaration"                                      || return 2 
 }
 
 defun_name_recipe() {
@@ -99,11 +98,30 @@ build_name_recipe_declaration() {
   #
   [ $# -eq 2 ] || return 1
   cat << eol 
-    ${1}() {
-      ${2}
-    }
+${1}() {
+  ${2}
+}
 eol
 }
+
+test__build_name_recipe_declaration() {
+  local _func="build_name_recipe_declaration" _test_string
+  _res=$($_func \
+     "hello" \
+     "echo 'Hello world!'"
+  )                                                             || return 1
+  _test_string=$(cat << eol
+hello() {
+  echo 'Hello world!'
+}
+eol
+)
+
+  [ "$_test_string" == "$_res" ]                                || return 2
+  ! $_func "hello"                                              || return 3
+  ! $_func "hello" "param1" "param2"                            || return 4
+   
+} && tsh__add_func test__build_name_recipe_declaration
 
 func_recipe() {
   #
@@ -121,10 +139,39 @@ func_recipe() {
 }
 
 test__func_recipe() {
-  #local _func="func_name"
-  #[ "$($_func ' function hello () { ')" == 'hello' ] || return 1
-  :
+  local _func="func_recipe" _test_func_declaration
+ 
+  # ---
+  # Normal declaration
+  _test_func_declaration=$(build_name_recipe_declaration \
+    "Hello" \
+    "echo 'Hello world!'")                                      || return 1
+  _func_recipe=$($_func "$_test_func_declaration")
+  [ "$_func_recipe" == "  echo 'Hello world!'" ]                || return 2
+
+  # ---
+  ! build_name_recipe_declaration \
+    "" \
+    "Hello" \
+    "echo 'Hello world!'" \
+     &> /dev/null                                               || return 3
+
+  # --
+  # Declare first empty line
+  _test_func_declaration=$(build_name_recipe_declaration \
+    "$(cat << eol
+
+Hello
+eol
+)" \
+    "echo 'Hello world2"
+   )                                                            || return 4
+
+  # Test first line
+  ! $_func "$_test_func_declaration"                            || return 5  
+  
 } && tsh__add_func test__func_recipe
+
 
 func_name() {
   #
@@ -392,41 +439,6 @@ test__decorate() {
 
 } && tsh__add_func test__decorate
 
-test__decorateX() {
-  ## Declare f0 as a decorator.
-  #shopt -s expand_aliases
-  #type -a @decorator
-  f0() {
-    local _ret _res
-    #_res=$("${_func_decorated}" "$@")
-    #_ret=$?
-    echo "'${_func_decorated}' @ '${FUNCNAME}' -> '${_func_decorable}'"
-  } || return 1
-
-  ## Declare and decorate f1 with f0
-  @decorate && return 2
-  f1() {
-    return 71
-}
-
-  @decorate f0 || return 3
-  f2() { 
-    return 72
-}
-
-  #local _decl=$(cat << eol
-  #f3() {
-  #  return 73
-#}
-#eol
-#)
-
-#  echo "$_decl" | @decorateX || return 4
-
-  
-
-} #&& tsh__add_func test__decorateX
-
 
 build_decorable_function_name() {  
   [ $# -eq 2 ] || return 1               
@@ -439,7 +451,7 @@ test__build_decorable_function_name() {
   ! $($_func one two three)                                     || return 2
   [ "$($_func one two)" == "one@two" ]                          || return 3
   
-} #&& tsh__add_func test__build_decorable_function_name
+} && tsh__add_func test__build_decorable_function_name
 
 
 set +euf +o pipefail
