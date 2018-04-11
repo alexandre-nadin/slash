@@ -14,47 +14,87 @@ function arrr_array_duplicate_from_to() {
   # Takes the names of two arrays defined in the current env.
   # Duplicates the first one into the second one. 
   #
-  local arr_name_from="$1"
-  local arr_name_to="$2"
-  [ "$arr_name_from" = "$arr_name_to" ] \
-    && echo "ERROR: Trying to duplicate same array name: '$arr_name_from' and '$arr_name_to'." \
-    && return 1 \
-    || :
-    
-  local astr="$arr_name_to=(\"\${$arr_name_from[@]}\")"
-  eval $astr
+  [ $# -eq 2 ]                                                  || return 1
+  local _arr_name_from _arr_name_to
+  _arr_name_from="$1"
+  _arr_name_to="$2"
+
+  [ "$_arr_name_from" = "$_arr_name_to" ] \
+    && echo "ERROR: Trying to duplicate same array name: '$_arr_name_from' and '$_arr_name_to'." \
+                                                                && return 2 \
+                                                                || :
+  eval "[ \${$_arr_name_from[@]:+x} ]"                          || return 3
+  eval "$_arr_name_to=(\"\${$_arr_name_from[@]}\")"             || return 4
 }
+
+test__arrr_array_duplicate_from_to() {
+  set -u
+  local _func="arrr_array_duplicate_from_to" _res _ret
+  local _arr1 _arr2
+  ! $_func                                                      || return 1
+  ! $_func oen two thre                                         || return 2
+
+  _arr1=(one two " three four" five)
+  $_func _arr1 _arr2                                            || return 3
+  [ ${#_arr2[@]} -eq ${#_arr1[@]} ]                             || return 4
+  ! [ "${_arr2[2]}" == " three four " ]                         || return 5
+  [ "${_arr2[2]}" == " three four" ]                            || return 6
+  ! $_func undefined_array _arr2                                || return 7
+
+  $_func undefined_array _arr2 && _ret=$? || _ret=$?
+  [ $_ret -eq 3 ]                                               || return 8
+
+} && tsh__add_func test__arrr_array_duplicate_from_to
+
 
 function arrr_add() {
   #
   # Takes an array name and adds the given element to it.
   #
-  local afrom="$1"; shift
-  local _add_anew=()
-  arrr_array_duplicate_from_to "$afrom" _add_anew
-  for elem in "$@"; do _add_anew+=("$elem"); done
-  arrr_array_duplicate_from_to _add_anew "$afrom"
+  [ $# -ge 2 ]                                                  || return 1
+  local _afrom _add_anew 
+  _afrom="$1"                                          && shift || return 2
+  _add_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _add_anew              || return 3
+  for _elem in "$@"; do _add_anew+=("$_elem"); done
+  arrr_array_duplicate_from_to _add_anew "$_afrom"              || return 4
 }
-
-_test_arrr_add() {
-  local _c=(one thow "three four")
-  [ ${#_c[@]} -eq 3 ] || return 1
-  arrr_add _c added1 "added 2" added3
-  [ ! "${_c[2]}" = "three fou" ] || return 2
-  [ "${_c[2]}" = "three four" ] || return 3
-  [ ${#_c[@]} -eq 6 ] || return 4
-} && tsh__add_func _test_arrr_add
+ 
+test__arrr_add() {
+  local _func="arrr_add" _c
+  _c=(one thow "three four")
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2
+  ! $_func _undefined one two                                   || return 3
+  [ ${#_c[@]} -eq 3 ]                                           || return 4
+  $_func _c added1 "added 2" added3
+  ! [ "${_c[2]}" = "three fou" ]                                || return 5
+  [ "${_c[2]}" = "three four" ]                                 || return 6
+  [ "${_c[3]}" = "added1" ]                                     || return 7
+  [ "${_c[-1]}" = "added3" ]                                    || return 8
+  [ ${#_c[@]} -eq 6 ]                                           || return 9
+} && tsh__add_func test__arrr_add
 
 function arrr_dump() {
   #
   # Dumps the content of the given array name
   # on new lines.
   #
-  local afrom="$1"; shift # TO wrap with macro
-  local _dump_anew=()  # TO wrap with macro
-  arrr_array_duplicate_from_to "$afrom" _dump_anew  # TO wrap with macro
-  for elem in "${_dump_anew[@]}"; do printf "$elem\n"; done
+  [ $# -eq 1 ]   || return 1
+  local _afrom _dump_anew
+  _afrom="$1"                                                   || return 2
+  _dump_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _dump_anew             || return 3
+  for _elem in "${_dump_anew[@]}"; do printf "$_elem\n"; done
 }
+
+test__arrr_dump() {
+  local _func="arrr_dump" _c
+  _c=(one thow "three four")
+  ! $_func                                                      || return 1
+  ! $_func _undefined                                           || return 2
+  [ "$($_func _c)" == "$(echo -e 'one\nthow\nthree four')" ]    || return 3
+} && tsh__add_func test__arrr_dump
 
 function arrr_indexes_of() {
   #
@@ -63,24 +103,29 @@ function arrr_indexes_of() {
   # $1: array name
   # $2-: [string ...]
   #
-  local afrom="$1"; shift
-  local _indexes_of_anew=()
-  arrr_array_duplicate_from_to "$afrom" _indexes_of_anew  
+  local _afrom _tosearch _indexes_of_anew
+  [ $# -ge 2 ]                                                  || return 1
+  _afrom="$1"                                          && shift || return 2
+  _tosearch="$1"
+  arrr_array_duplicate_from_to "$_afrom" _indexes_of_anew       || return 3
   
-  local tosearch="$1"
-  for i in "${!_indexes_of_anew[@]}"; do
-    [ "${_indexes_of_anew[$i]}" = "$tosearch" ] \
-     && printf "$i\n" \
+  for _i in "${!_indexes_of_anew[@]}"; do
+    [ "${_indexes_of_anew[$_i]}" = "$_tosearch" ] \
+     && printf "$_i\n" \
      || :
   done
 }
 
-_test_arrr_indexes_of() {
-  local _c=(one thow "three four" one)
-  [ "$(arrr_indexes_of _c ase | xargs)" = "" ] || return 1
-  [ "$(arrr_indexes_of _c 'three four ' | xargs)" = "" ] || return 2
-  [ "$(arrr_indexes_of _c 'one' | xargs)" = "0 3" ] || return 3
-} && tsh__add_func _test_arrr_indexes_of
+test__arrr_indexes_of() {
+  local _func="arrr_indexes_of" _c
+  _c=(one thow "three four" one)
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2
+  ! $_func _undefined                                           || return 3
+  [ "$($_func _c ase | xargs)" = "" ]                           || return 4
+  [ "$($_func _c 'three four ' | xargs)" = "" ]                 || return 5
+  [ "$($_func _c 'one' | xargs)" = "0 3" ]                      || return 6
+} && tsh__add_func test__arrr_indexes_of
 
 function arrr_contains() {
   #
@@ -89,16 +134,16 @@ function arrr_contains() {
   # $2: element
   #
   [ $# -eq 2 ]                                                  || return 1
-  local afrom _tofind _indexes _nb_idx
-  afrom="$1"                                          && shift  || return 2
+  local _afrom _tofind _indexes _nb_idx
+  _afrom="$1"                                          && shift || return 2
   _tofind="$1"
-
+ 
   ## Get the indexes
-  _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))             || return 3
+  _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
   [ ${#_indexes[@]} -ne 0 ]                                     || return 4
 }
 
-_test_arrr_contains() {
+test__arrr_contains() {
   local _func="arrr_contains" _c=(one thow "three four" one)
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2 
@@ -109,7 +154,7 @@ _test_arrr_contains() {
   $_func _c 'one'                                               || return 6
   ! $_func _c ""                                                || return 7
   ! $_func _c " "                                               || return 8
-} && tsh__add_func _test_arrr_contains
+} && tsh__add_func test__arrr_contains
 
 function arrr_pop() {
   #
@@ -118,58 +163,66 @@ function arrr_pop() {
   # Indexes start from 0.
   # Default index is the array's last element's
   #
-  local afrom="$1"; shift
-  local _pop_anew=()
-  arrr_array_duplicate_from_to "$afrom" _pop_anew
-
-  local index="${1:-$(( ${#_pop_anew[@]} -1))}" 
-  printf "${_pop_anew[$index]}\n"
-  unset '_pop_anew[$index]'
-  arrr_array_duplicate_from_to _pop_anew "$afrom"
+  [ $# -ge 1 ]                                                  || return 1
+  local _afrom _pop_anew _index
+  _afrom="$1"; shift
+  _pop_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _pop_anew              || return 2
+  _index="${1:-$(( ${#_pop_anew[@]} -1))}" 
+  printf "${_pop_anew[$_index]}\n"
+  unset '_pop_anew[$_index]'
+  arrr_array_duplicate_from_to _pop_anew "$_afrom"              || return 3
 }
 
-_test_arrr_pop() {
-  local _c=(one two "three four" four five)
-  local _res
-  [ ${#_c[@]} -eq 5 ] || return 1
-  [ "$(arrr_pop _c)" = "five" ] || return 2
+test__arrr_pop() {
+  local _func="arrr_pop" _c _res
+  _c=(one two "three four" four five)
+  ! $_func                                                      || return 1
+  ! $_func _notdefined "one"                                    || return 3
+
+  [ ${#_c[@]} -eq 5 ]                                           || return 4
+  [ "$($_func _c)" = "five" ]                                   || return 5
   ## We popped it in a subshell. We need to do it in this shell:
-  arrr_pop _c &> /dev/null
-  [ "$(arrr_pop _c 2)" = "three four" ] || return 3
-  arrr_pop _c 2 &> /dev/null
-  [ ${#_c[@]} -eq 3 ] || return 4
-} && tsh__add_func _test_arrr_pop
+  $_func _c &> /dev/null                                        || return 6
+  [ "$($_func _c 2)" = "three four" ]                           || return 7
+  $_func _c 2 &> /dev/null                                      || return 8
+  [ ${#_c[@]} -eq 3 ]                                           || return 9
+} && tsh__add_func test__arrr_pop
 
 function arrr_pop_name() {
   #
   # Takes an array name and pops its first element 
   # that matches the given string, starting from the end.
   #
-  
-  local afrom="$1"; shift # TO wrap with macro
-  local _tofind="$1"
+  [ $# -eq 2 ]                                                  || return 1 
+  local _afrom _tofind _indexes _nb_idx _index
+  _afrom="$1"                                          && shift || return 2
+  _tofind="$1"
 
   ## Get the indexes
-  local _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))
-  local _nb_idx=${#_indexes[@]}
+  _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
+  _nb_idx=${#_indexes[@]}
   
   ## Don't do anything if no index found.
-  [ $_nb_idx -eq 0 ] && return 0
+  ! [ $_nb_idx -eq 0 ]                                          || return 0
 
   ## Pop the first index found
-  local _index=${_indexes[$(( _nb_idx -1 ))]}
-  arrr_pop "$afrom" $_index
+  _index=${_indexes[$(( _nb_idx -1 ))]}
+  arrr_pop "$_afrom" $_index                                    || return 4
 }
 
-_test_arrr_pop_name() {
-  local _c=(one two "three four" four one)
-  [ "$(arrr_pop_name _c '')" = "" ] || return 1
-  [ "$(arrr_pop_name _c ' ')" = "" ] || return 2
-  [ "$(arrr_pop_name _c 'three')" = "" ] || return 3
-  [ "$(arrr_pop_name _c 'three four ')" = "" ] || return 4
-  [ "$(arrr_pop_name _c 'three four')" = "three four" ] || return 5
-  arrr_pop_name _c "three four" &> /dev/null
-  [ "$(arrr_pop_name _c 'one')" = "one" ] || return 6
-  arrr_pop_name _c "one" &> /dev/null
-  [ ${#_c[@]} -eq 3 ] || return 7
-} && tsh__add_func _test_arrr_pop_name
+test__arrr_pop_name() {
+  local _func="arrr_pop_name" _c
+  _c=(one two "three four" four one)
+  ! $_func                                                      || return 1
+  ! $_func _notdefined "one"                                    || return 3
+  [ "$($_func _c '')" = "" ]                                    || return 1
+  [ "$($_func _c ' ')" = "" ]                                   || return 2
+  [ "$($_func _c 'three')" = "" ]                               || return 3
+  [ "$($_func _c 'three four ')" = "" ]                         || return 4
+  [ "$($_func _c 'three four')" = "three four" ]                || return 5
+  $_func _c "three four" &> /dev/null                           || return 4
+  [ "$($_func _c 'one')" = "one" ]                              || return 6
+  $_func _c "one" &> /dev/null                                  || return 6
+  [ ${#_c[@]} -eq 3 ]                                           || return 7
+} && tsh__add_func test__arrr_pop_name
