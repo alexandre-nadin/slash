@@ -88,26 +88,27 @@ function arrr_contains() {
   # $1: array name
   # $2: element
   #
-  local afrom="$1"; shift # TO wrap with macro
-  local _tofind="$1"
+  [ $# -eq 2 ]                                                  || return 1
+  local afrom _tofind _indexes _nb_idx
+  afrom="$1"                                          && shift  || return 2
+  _tofind="$1"
 
   ## Get the indexes
-  local _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))
-  local _nb_idx=${#_indexes[@]}
-  
-  ## Don't do anything if no index found.
-  [ $_nb_idx -eq 0 ] \
-   && return 1 \
-   || return 0
+  _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))             || return 3
+  [ ${#_indexes[@]} -ne 0 ]                                     || return 4
 }
 
 _test_arrr_contains() {
-  local _c=(one thow "three four" one)
-  ! arrr_contains _c ase || return 1
-  ! arrr_contains _c 'three four ' || return 2
-  arrr_contains _c 'one' || return 3
-  ! arrr_contains _c "" || return 4
-  ! arrr_contains _c " " || return 5
+  local _func="arrr_contains" _c=(one thow "three four" one)
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2 
+  ! $_func _notdefined "one"                                    || return 3
+  ! $_func _c ase                                               || return 3
+  ! $_func _c 'three four '                                     || return 4
+  ! $_func _c 'three fo'                                        || return 5
+  $_func _c 'one'                                               || return 6
+  ! $_func _c ""                                                || return 7
+  ! $_func _c " "                                               || return 8
 } && tsh__add_func _test_arrr_contains
 
 function arrr_pop() {
