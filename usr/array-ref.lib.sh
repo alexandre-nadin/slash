@@ -7,6 +7,8 @@
 # shell environment.
 #
 #
+source testsh.lib
+
 function arrr_array_duplicate_from_to() {
   #
   # Takes the names of two arrays defined in the current env.
@@ -41,7 +43,7 @@ _test_arrr_add() {
   [ ! "${_c[2]}" = "three fou" ] || return 2
   [ "${_c[2]}" = "three four" ] || return 3
   [ ${#_c[@]} -eq 6 ] || return 4
-}
+} && tsh__add_func _test_arrr_add
 
 function arrr_dump() {
   #
@@ -78,7 +80,7 @@ _test_arrr_indexes_of() {
   [ "$(arrr_indexes_of _c ase | xargs)" = "" ] || return 1
   [ "$(arrr_indexes_of _c 'three four ' | xargs)" = "" ] || return 2
   [ "$(arrr_indexes_of _c 'one' | xargs)" = "0 3" ] || return 3
-}
+} && tsh__add_func _test_arrr_indexes_of
 
 function arrr_contains() {
   #
@@ -106,7 +108,7 @@ _test_arrr_contains() {
   arrr_contains _c 'one' || return 3
   ! arrr_contains _c "" || return 4
   ! arrr_contains _c " " || return 5
-}
+} && tsh__add_func _test_arrr_contains
 
 function arrr_pop() {
   #
@@ -135,7 +137,7 @@ _test_arrr_pop() {
   [ "$(arrr_pop _c 2)" = "three four" ] || return 3
   arrr_pop _c 2 &> /dev/null
   [ ${#_c[@]} -eq 3 ] || return 4
-}
+} && tsh__add_func _test_arrr_pop
 
 function arrr_pop_name() {
   #
@@ -169,26 +171,4 @@ _test_arrr_pop_name() {
   [ "$(arrr_pop_name _c 'one')" = "one" ] || return 6
   arrr_pop_name _c "one" &> /dev/null
   [ ${#_c[@]} -eq 3 ] || return 7
-}
-
-_arrr_tests=(
-  _test_arrr_add
-  _test_arrr_indexes_of
-  _test_arrr_pop
-  _test_arrr_pop_name
-  _test_arrr_contains
-)
-
-_test_arrr() {
-  local _status=0
-  for test in "${_arrr_tests[@]}"; do
-    printf "Testing $test" >&2
-    $test \
-     && printf "\tv OK\n" >&2 \
-     || {
-         printf "\tx KO ($?)\n" >&2 \
-          && _status=1
-        }
-  done
-  return $_status
-}
+} && tsh__add_func _test_arrr_pop_name
