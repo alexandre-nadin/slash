@@ -51,20 +51,28 @@ function arrr_add() {
   #
   # Takes an array name and adds the given element to it.
   #
-  local _afrom="$1"; shift
-  local _add_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _add_anew
-  for elem in "$@"; do _add_anew+=("$elem"); done
-  arrr_array_duplicate_from_to _add_anew "$_afrom"
- }
+  [ $# -ge 2 ]                                                  || return 1
+  local _afrom _add_anew 
+  _afrom="$1"                                          && shift || return 2
+  _add_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _add_anew              || return 3
+  for _elem in "$@"; do _add_anew+=("$_elem"); done
+  arrr_array_duplicate_from_to _add_anew "$_afrom"              || return 4
+}
  
 test__arrr_add() {
-   local _c=(one thow "three four")
-   [ ${#_c[@]} -eq 3 ] || return 1
-   arrr_add _c added1 "added 2" added3
-   [ ! "${_c[2]}" = "three fou" ] || return 2
-   [ "${_c[2]}" = "three four" ] || return 3
-   [ ${#_c[@]} -eq 6 ] || return 4
+  local _func="arrr_add" _c
+  _c=(one thow "three four")
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2
+  ! $_func _undefined one two                                   || return 3
+  [ ${#_c[@]} -eq 3 ]                                           || return 4
+  $_func _c added1 "added 2" added3
+  ! [ "${_c[2]}" = "three fou" ]                                || return 5
+  [ "${_c[2]}" = "three four" ]                                 || return 6
+  [ "${_c[3]}" = "added1" ]                                     || return 7
+  [ "${_c[-1]}" = "added3" ]                                    || return 8
+  [ ${#_c[@]} -eq 6 ]                                           || return 9
 } && tsh__add_func test__arrr_add
 
 function arrr_dump() {
