@@ -7,6 +7,8 @@
 # shell environment.
 #
 #
+source testsh.lib
+
 function arrr_array_duplicate_from_to() {
   #
   # Takes the names of two arrays defined in the current env.
@@ -41,7 +43,7 @@ _test_arrr_add() {
   [ ! "${_c[2]}" = "three fou" ] || return 2
   [ "${_c[2]}" = "three four" ] || return 3
   [ ${#_c[@]} -eq 6 ] || return 4
-}
+} && tsh__add_func _test_arrr_add
 
 function arrr_dump() {
   #
@@ -78,7 +80,7 @@ _test_arrr_indexes_of() {
   [ "$(arrr_indexes_of _c ase | xargs)" = "" ] || return 1
   [ "$(arrr_indexes_of _c 'three four ' | xargs)" = "" ] || return 2
   [ "$(arrr_indexes_of _c 'one' | xargs)" = "0 3" ] || return 3
-}
+} && tsh__add_func _test_arrr_indexes_of
 
 function arrr_contains() {
   #
@@ -86,27 +88,28 @@ function arrr_contains() {
   # $1: array name
   # $2: element
   #
-  local afrom="$1"; shift # TO wrap with macro
-  local _tofind="$1"
+  [ $# -eq 2 ]                                                  || return 1
+  local afrom _tofind _indexes _nb_idx
+  afrom="$1"                                          && shift  || return 2
+  _tofind="$1"
 
   ## Get the indexes
-  local _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))
-  local _nb_idx=${#_indexes[@]}
-  
-  ## Don't do anything if no index found.
-  [ $_nb_idx -eq 0 ] \
-   && return 1 \
-   || return 0
+  _indexes=($(arrr_indexes_of "$afrom" "$_tofind"))             || return 3
+  [ ${#_indexes[@]} -ne 0 ]                                     || return 4
 }
 
 _test_arrr_contains() {
-  local _c=(one thow "three four" one)
-  ! arrr_contains _c ase || return 1
-  ! arrr_contains _c 'three four ' || return 2
-  arrr_contains _c 'one' || return 3
-  ! arrr_contains _c "" || return 4
-  ! arrr_contains _c " " || return 5
-}
+  local _func="arrr_contains" _c=(one thow "three four" one)
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2 
+  ! $_func _notdefined "one"                                    || return 3
+  ! $_func _c ase                                               || return 3
+  ! $_func _c 'three four '                                     || return 4
+  ! $_func _c 'three fo'                                        || return 5
+  $_func _c 'one'                                               || return 6
+  ! $_func _c ""                                                || return 7
+  ! $_func _c " "                                               || return 8
+} && tsh__add_func _test_arrr_contains
 
 function arrr_pop() {
   #
@@ -135,7 +138,7 @@ _test_arrr_pop() {
   [ "$(arrr_pop _c 2)" = "three four" ] || return 3
   arrr_pop _c 2 &> /dev/null
   [ ${#_c[@]} -eq 3 ] || return 4
-}
+} && tsh__add_func _test_arrr_pop
 
 function arrr_pop_name() {
   #
@@ -169,26 +172,4 @@ _test_arrr_pop_name() {
   [ "$(arrr_pop_name _c 'one')" = "one" ] || return 6
   arrr_pop_name _c "one" &> /dev/null
   [ ${#_c[@]} -eq 3 ] || return 7
-}
-
-_arrr_tests=(
-  _test_arrr_add
-  _test_arrr_indexes_of
-  _test_arrr_pop
-  _test_arrr_pop_name
-  _test_arrr_contains
-)
-
-_test_arrr() {
-  local _status=0
-  for test in "${_arrr_tests[@]}"; do
-    printf "Testing $test" >&2
-    $test \
-     && printf "\tv OK\n" >&2 \
-     || {
-         printf "\tx KO ($?)\n" >&2 \
-          && _status=1
-        }
-  done
-  return $_status
-}
+} && tsh__add_func _test_arrr_pop_name
