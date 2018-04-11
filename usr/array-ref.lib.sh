@@ -194,31 +194,35 @@ function arrr_pop_name() {
   # Takes an array name and pops its first element 
   # that matches the given string, starting from the end.
   #
-  
-  local _afrom="$1"; shift # TO wrap with macro
-  local _tofind="$1"
+  [ $# -eq 2 ]                                                  || return 1 
+  local _afrom _tofind _indexes _nb_idx _index
+  _afrom="$1"                                          && shift || return 2
+  _tofind="$1"
 
   ## Get the indexes
-  local _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))
-  local _nb_idx=${#_indexes[@]}
+  _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
+  _nb_idx=${#_indexes[@]}
   
   ## Don't do anything if no index found.
-  [ $_nb_idx -eq 0 ] && return 0
+  ! [ $_nb_idx -eq 0 ]                                          || return 0
 
   ## Pop the first index found
-  local _index=${_indexes[$(( _nb_idx -1 ))]}
-  arrr_pop "$_afrom" $_index
+  _index=${_indexes[$(( _nb_idx -1 ))]}
+  arrr_pop "$_afrom" $_index                                    || return 4
 }
 
 test__arrr_pop_name() {
-  local _c=(one two "three four" four one)
-  [ "$(arrr_pop_name _c '')" = "" ] || return 1
-  [ "$(arrr_pop_name _c ' ')" = "" ] || return 2
-  [ "$(arrr_pop_name _c 'three')" = "" ] || return 3
-  [ "$(arrr_pop_name _c 'three four ')" = "" ] || return 4
-  [ "$(arrr_pop_name _c 'three four')" = "three four" ] || return 5
-  arrr_pop_name _c "three four" &> /dev/null
-  [ "$(arrr_pop_name _c 'one')" = "one" ] || return 6
-  arrr_pop_name _c "one" &> /dev/null
-  [ ${#_c[@]} -eq 3 ] || return 7
+  local _func="arrr_pop_name" _c
+  _c=(one two "three four" four one)
+  ! $_func                                                      || return 1
+  ! $_func _notdefined "one"                                    || return 3
+  [ "$($_func _c '')" = "" ]                                    || return 1
+  [ "$($_func _c ' ')" = "" ]                                   || return 2
+  [ "$($_func _c 'three')" = "" ]                               || return 3
+  [ "$($_func _c 'three four ')" = "" ]                         || return 4
+  [ "$($_func _c 'three four')" = "three four" ]                || return 5
+  $_func _c "three four" &> /dev/null                           || return 4
+  [ "$($_func _c 'one')" = "one" ]                              || return 6
+  $_func _c "one" &> /dev/null                                  || return 6
+  [ ${#_c[@]} -eq 3 ]                                           || return 7
 } && tsh__add_func test__arrr_pop_name
