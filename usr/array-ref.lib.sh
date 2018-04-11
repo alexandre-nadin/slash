@@ -80,11 +80,21 @@ function arrr_dump() {
   # Dumps the content of the given array name
   # on new lines.
   #
-  local _afrom="$1"; shift # TO wrap with macro
-  local _dump_anew=()  # TO wrap with macro
-  arrr_array_duplicate_from_to "$_afrom" _dump_anew  # TO wrap with macro
-  for elem in "${_dump_anew[@]}"; do printf "$elem\n"; done
+  [ $# -eq 1 ]   || return 1
+  local _afrom _dump_anew
+  _afrom="$1"                                                   || return 2
+  _dump_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _dump_anew             || return 3
+  for _elem in "${_dump_anew[@]}"; do printf "$_elem\n"; done
 }
+
+test__arrr_dump() {
+  local _func="arrr_dump" _c
+  _c=(one thow "three four")
+  ! $_func                                                      || return 1
+  ! $_func _undefined                                           || return 2
+  [ "$($_func _c)" == "$(echo -e 'one\nthow\nthree four')" ]    || return 3
+} && tsh__add_func test__arrr_dump
 
 function arrr_indexes_of() {
   #
