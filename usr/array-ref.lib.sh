@@ -163,26 +163,30 @@ function arrr_pop() {
   # Indexes start from 0.
   # Default index is the array's last element's
   #
-  local _afrom="$1"; shift
-  local _pop_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _pop_anew
-
-  local index="${1:-$(( ${#_pop_anew[@]} -1))}" 
-  printf "${_pop_anew[$index]}\n"
-  unset '_pop_anew[$index]'
-  arrr_array_duplicate_from_to _pop_anew "$_afrom"
+  [ $# -ge 1 ]                                                  || return 1
+  local _afrom _pop_anew _index
+  _afrom="$1"; shift
+  _pop_anew=()
+  arrr_array_duplicate_from_to "$_afrom" _pop_anew              || return 2
+  _index="${1:-$(( ${#_pop_anew[@]} -1))}" 
+  printf "${_pop_anew[$_index]}\n"
+  unset '_pop_anew[$_index]'
+  arrr_array_duplicate_from_to _pop_anew "$_afrom"              || return 3
 }
 
 test__arrr_pop() {
-  local _c=(one two "three four" four five)
-  local _res
-  [ ${#_c[@]} -eq 5 ] || return 1
-  [ "$(arrr_pop _c)" = "five" ] || return 2
+  local _func="arrr_pop" _c _res
+  _c=(one two "three four" four five)
+  ! $_func                                                      || return 1
+  ! $_func _notdefined "one"                                    || return 3
+
+  [ ${#_c[@]} -eq 5 ]                                           || return 4
+  [ "$($_func _c)" = "five" ]                                   || return 5
   ## We popped it in a subshell. We need to do it in this shell:
-  arrr_pop _c &> /dev/null
-  [ "$(arrr_pop _c 2)" = "three four" ] || return 3
-  arrr_pop _c 2 &> /dev/null
-  [ ${#_c[@]} -eq 3 ] || return 4
+  $_func _c &> /dev/null                                        || return 6
+  [ "$($_func _c 2)" = "three four" ]                           || return 7
+  $_func _c 2 &> /dev/null                                      || return 8
+  [ ${#_c[@]} -eq 3 ]                                           || return 9
 } && tsh__add_func test__arrr_pop
 
 function arrr_pop_name() {
