@@ -103,23 +103,28 @@ function arrr_indexes_of() {
   # $1: array name
   # $2-: [string ...]
   #
-  local _afrom="$1"; shift
-  local _indexes_of_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _indexes_of_anew  
+  local _afrom _tosearch _indexes_of_anew
+  [ $# -ge 2 ]                                                  || return 1
+  _afrom="$1"                                          && shift || return 2
+  _tosearch="$1"
+  arrr_array_duplicate_from_to "$_afrom" _indexes_of_anew       || return 3
   
-  local tosearch="$1"
-  for i in "${!_indexes_of_anew[@]}"; do
-    [ "${_indexes_of_anew[$i]}" = "$tosearch" ] \
-     && printf "$i\n" \
+  for _i in "${!_indexes_of_anew[@]}"; do
+    [ "${_indexes_of_anew[$_i]}" = "$_tosearch" ] \
+     && printf "$_i\n" \
      || :
   done
 }
 
 test__arrr_indexes_of() {
-  local _c=(one thow "three four" one)
-  [ "$(arrr_indexes_of _c ase | xargs)" = "" ] || return 1
-  [ "$(arrr_indexes_of _c 'three four ' | xargs)" = "" ] || return 2
-  [ "$(arrr_indexes_of _c 'one' | xargs)" = "0 3" ] || return 3
+  local _func="arrr_indexes_of" _c
+  _c=(one thow "three four" one)
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2
+  ! $_func _undefined                                           || return 3
+  [ "$($_func _c ase | xargs)" = "" ]                           || return 4
+  [ "$($_func _c 'three four ' | xargs)" = "" ]                 || return 5
+  [ "$($_func _c 'one' | xargs)" = "0 3" ]                      || return 6
 } && tsh__add_func test__arrr_indexes_of
 
 function arrr_contains() {
