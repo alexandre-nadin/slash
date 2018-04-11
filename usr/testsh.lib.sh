@@ -20,6 +20,8 @@
 ########################################
 set -euf -o pipefail
 
+tsh__TEST_DIR="tests"
+
 ## Array of functions to test
 tsh__funcs=()
 
@@ -40,6 +42,7 @@ tsh__test_funcs() {
   # Launches all the registered testing functions.
   #
   set +u
+  mkdir -p $tsh__TEST_DIR
   local _status=0
   for _test in "${tsh__funcs[@]}"; do
     $_test \
@@ -49,5 +52,6 @@ tsh__test_funcs() {
           && _status=1
         }   
   done
+  rm -rf $tsh__TEST_DIR
   return $_status
 }
