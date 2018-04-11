@@ -1,14 +1,26 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+#source testsh.lib
+
 function vars_enum() {
   #
   # Declares and enumerates all the given variable names from 0.
   # 
   local nb=0
   for _var in $@; do
-    eval $_var=$nb
+    eval "$_var=$nb"
     nb=$((nb+1))
   done
 }
+
+test__enum() {
+  local _func="vars_enum" _enum_vars
+  vars_enum OK FIRST SECOND THIRD FOURTH                        || return 1
+  # FIRST should be defined
+  [ "${FIRST:+x}" ]                                             || return 2
+  [ -z "${FIRS:+x}" ]                                           || return 3
+  [ $FIRST == "1" ]                                             || return 4
+  [ $OK -eq 0 ]                                                 || return 5
+} #&& tsh__add_func test__enum
 
 function vars__default_export() {
   #
