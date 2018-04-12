@@ -13,19 +13,30 @@ function arrr_array_duplicate_from_to() {
   #
   # Takes the names of two arrays defined in the current env.
   # Duplicates the first one into the second one. 
+  # If first is empty, duplicate it as an empty array.
   #
   [ $# -eq 2 ]                                                  || return 1
-  local _arr_name_from _arr_name_to
-  _arr_name_from="$1"
-  _arr_name_to="$2"
+  local _afrom _ato _afrom_empty
+  _afrom="$1"
+  _ato="$2"
 
-  [ "$_arr_name_from" = "$_arr_name_to" ] \
-    && echo "ERROR: Trying to duplicate same array name: '$_arr_name_from' and '$_arr_name_to'." \
+  [ "$_afrom" = "$_ato" ] \
+    && echo "ERROR: Trying to duplicate same array name: '$_afrom' and '$_ato'." \
                                                                 && return 2 \
                                                                 || :
   ## Check origin array is not empty
-  eval "[ \${$_arr_name_from[@]:+x} ]"                          || return 3
-  eval "$_arr_name_to=(\"\${$_arr_name_from[@]}\")"             || return 4
+  eval "[ \${$_afrom[@]:+x} ]" \
+   && _afrom_empty=false \
+   || _afrom_empty=true   
+ 
+  #pecho "_afrom_empty: '$_afrom_empty'" >&2
+  if $_afrom_empty; then
+    #pecho eval "$_ato=()"                               >&2
+    eval "$_ato=()"                                             || return 3
+  else
+    #pecho eval "$_ato=(\"\${$_afrom[@]}\")"                       >&2
+    eval "$_ato=(\"\${$_afrom[@]}\")"                           || return 4
+  fi
 }
 
 test__arrr_array_duplicate_from_to() {
@@ -37,17 +48,21 @@ test__arrr_array_duplicate_from_to() {
 
   _arr1=(one two " three four" five)
   $_func _arr1 _arr2                                            || return 3
+  #pecho "before" >&2
+  #pecho "'${_arr1[@]}' vs '${_arr2[@]}'" >&2
   [ ${#_arr2[@]} -eq ${#_arr1[@]} ]                             || return 4
+  #pecho "after" >&2
+  #return 77
   ! [ "${_arr2[2]}" == " three four " ]                         || return 5
   [ "${_arr2[2]}" == " three four" ]                            || return 6
-  ! $_func undefined_array _arr2                                || return 7
 
-  $_func undefined_array _arr2 && _ret=$? || _ret=$?
-  [ $_ret -eq 3 ]                                               || return 8
+  ## We can duplicate empty arrays
+  $_func undefined_array _arr2                                || return 7
+  [ "${#_arr2[@]}" -eq 0 ]                                     || return 71
   
-  _arr3=()
-  $_func _arr3 _arr2 && _ret=$? || _ret=$?
-  [ $_ret -eq 3 ]                                               || return 9
+  _arr3=(); unset _arr2
+  $_func _arr3 _arr2                                            || return 81
+  [ "${#_arr2[@]}" -eq 0 ]                                       || return 82
 
 } && tsh__add_func test__arrr_array_duplicate_from_to
 
@@ -242,7 +257,7 @@ test__arrr_pop() {
   _c=(one)
   ! $_func _c -2                                                || return 13
   _res="$($_func _c)" && _ret=$? || _ret=$?
-  $_func _c &> /dev/null                                        || return 14
+  $rrr_array_duplicate_from_to_func _c &> /dev/null                                        || return 14
   [ ${#_c[@]} -eq 0 ]                                           || return 15 
   ! $_func _c &> /dev/null                                      || return 16 
  
