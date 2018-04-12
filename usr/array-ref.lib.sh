@@ -92,6 +92,39 @@ test__arrr_add() {
   [ ${#_c[@]} -eq 6 ]                                           || return 10
 } && tsh__add_func test__arrr_add
 
+function arrr_add_unique() {
+  #
+  # Takes an array name and add the given element to it if it does not exist.
+  #
+  [ $# -eq 2 ]                                       || return 1
+  local _afrom _anew _elem
+  _afrom="$1"  && shift
+  _elem="$1" 
+  
+  ## Exits if _elem already exists
+  ! arrr_contains "$_afrom" "$_elem"                      || return 2
+  arrr_add "$_afrom" "$_elem"           || return 3
+}
+
+test__arrr_add_unique() {
+  local _func="arrr_add_unique" _c
+  ! $_func                                                      || return 1
+  ! $_func _c                                                   || return 2
+  $_func _c "one"                                               || return 3
+  [ ${#_c[@]} -eq 1 ]                                           || return 4
+  [ "${_c[0]}" == "one" ]                                       || return 5
+
+  $_func _c "one two"                                           || return 6 
+  [ ${#_c[@]} -eq 2 ]                                           || return 7
+
+  $_func _c "one "                                              || return 8
+  $_func _c " one"                                              || return 9
+  [ ${#_c[@]} -eq 4 ]                                           || return 10
+
+  ! $_func _c "one"                                             || return 11
+  [ ${#_c[@]} -eq 4 ]                                           || return 12
+} && tsh__add_func test__arrr_add_unique
+
 function arrr_dump() {
   #
   # Dumps the content of the given array name
