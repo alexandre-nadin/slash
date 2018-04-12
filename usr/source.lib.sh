@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 source testsh.lib
+source array-ref.lib
 
 is_sourced() {
   #
@@ -14,7 +15,6 @@ is_sourced() {
 test__is_sourced() {
   cat << 'eol' > ${tsh__TEST_DIR}/test_sourced_1.sh
 #!/usr/bin/env bash
-echo "BASH_SOURCE[@]: '${BASH_SOURCE[@]}'"
 source source.lib
 is_sourced                                                      || exit 1
 eol
@@ -25,13 +25,149 @@ eol
 #!/usr/bin/env bash
 source source.lib
 is_sourced                                                      || exit 1
-echo "BASH_SOURCE[@]: '\${BASH_SOURCE[@]}'"
 source "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 2
 ! bash "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 3
 eol
   (source ${tsh__TEST_DIR}/test_sourcing_1.sh)                  || return 3
 
 } && tsh__add_func test__is_sourced
+
+
+# --------------------------
+# Unique sourcing of files
+# --------------------------
+shopt -s expand_aliases
+alias 'src::source'='unique_source'
+
+src__SOURCED_PREFIX="_srced__"
+src__sourced_files=()
+
+unique_source() {
+  #
+  # Sources a file only if it has not already been sourced.
+  # Keeps track of each sourced file.
+  #
+  [ $# -eq 1 ]                                                  || return 1
+  local _src="$1"
+  # Strip the file name before (passing without parenthesis)
+  # 
+  ! arrr_contains src__sourced_files $_src                      || return 2
+  source $_src                                                  || return 3
+  arrr_add_unique src__sourced_files $_src                      || return 4
+}
+
+test__unique_source() {
+  # The file to source should:
+  #  - not be registered
+  #  - exist
+  #  - be soured without error
+  #  - registered
+  local _func="unique_source" _ret
+  # -------------
+  # Basic tests
+  # -------------
+  ! $_func                                                      || return 1
+  $_func logging.lib                                            || return 2
+  ! $_func logging.lib                                          || return 3
+  $_func array-ref.lib                                          || return 4
+  ! $_func array-ref.lib                                        || return 5
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 6
+ 
+  ! $_func " logging.lib"                                       || return 7
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 8
+
+  $_func "loggi" &> /dev/null && _ret=$? || _ret=$?
+  ! arrr_contains src__sourced_files "loggi"                    || return 9
+  ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array-ref.lib" ] \
+                                                                || return 10
+  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array-ref.lib" ] \
+                                                                || return 11
+
+  # --------------
+  # Deeper tests
+  # --------------
+  ## Testing script files
+  local _f{1..4}
+  _f0="${tsh__TEST_DIR}/test_unique_source_0.sh"
+  _f1="${tsh__TEST_DIR}/test_unique_source_1.sh"
+  _f2="${tsh__TEST_DIR}/test_unique_source_2.sh"
+  _f3="${tsh__TEST_DIR}/test_unique_source_3.sh"
+  _f4="${tsh__TEST_DIR}/test_unique_source_4.sh"
+
+  ## Empty file
+  cat << 'eol' > $_f0
+#!/usr/bin/env bash
+eol
+
+  ## File to be sourced
+  cat << 'eol' > $_f1
+#!/usr/bin/env bash
+## Init at 0 if not defined or empty
+set +u
+SOURCED_VAR=${SOURCED_VAR:-0}
+
+## Increment
+SOURCED_VAR=$(( SOURCED_VAR + 1 ))
+eol
+
+  (source $_f1 \
+     && [ ! -z ${SOURCED_VAR:+x} ] \
+     && [ $SOURCED_VAR -eq 1 ])                                 || return 12
+
+  ## File sourcing $_f1
+  cat << eol > $_f2
+#!/usr/bin/env bash
+source $_f1                                                     || exit 13
+source $_f1                                                     || exit 14
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 15
+ 
+source source.lib
+src::source $_f1                                                || exit 16
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 17
+
+! src::source $_f1                                              || exit 18
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 19
+eol
+
+  (bash $_f2)                                                   || return $?
+
+  ## File _f3 sourcing _f1
+  cat << eol > $_f3
+#!/usr/bin/env bash
+source source.lib                                               || exit 20
+src::source $_f1                                                || exit 21
+source $_f1                                                     || exit 22
+! src::source $_f1                                              || exit 23
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 24
+
+eol
+  (bash $_f3)                                                   || return $?
+
+  ## File sourcing all
+  cat << eol > $_f4
+#!/usr/bin/env bash
+source source.lib                                               || exit 25
+
+src::source $_f3                                                || exit 26
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 27
+
+! src::source $_f3                                              || exit 28
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 29
+
+! src::source $_f1                                              || exit 30
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 31
+
+source $_f1                                                     || exit 32
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 33
+
+! src::source $_f1                                              || exit 34
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 35
+
+src::source $_f0                                                || exit 36
+eol
+  (bash $_f4)                                                   || return $?
+} && tsh__add_func test__unique_source
+
 
 # ----
 # Not reviewed
