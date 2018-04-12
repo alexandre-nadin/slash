@@ -194,46 +194,59 @@ function arrr_pop() {
   # Default index is the array's last element's
   #
   [ $# -ge 1 ]                                                  || return 1
-  local _afrom _pop_anew _indexes _index 
+  local _afrom _atemp _atemp_size _indexes _index 
   _afrom="$1"; shift
-  _pop_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _pop_anew              || return 2
-  _index="${1:-$(( ${#_pop_anew[@]} -1))}"
+  _atemp=()
+  arrr_array_duplicate_from_to "$_afrom" _atemp                 || return 2
+  _atemp_size=${#_atemp[@]}
+  ## Array size must be > 0
+  [ $_atemp_size -gt 0 ]                                        || return 3
+
+  ## Requested index
+  _index="${1:-$(( $_atemp_size -1))}"
   
   ## Check index is not out of bound
-  echo "_index: '$_index' vs pop_new: '${#_pop_anew[@]}'"
-  [ $_index -gt 0 ] || [ $_index -lt $(( ${#_pop_anew[@]}-1 )) ]|| return 3
-  printf "${_pop_anew[$_index]}\n"
-  unset '_pop_anew[$_index]'
-  arrr_array_duplicate_from_to _pop_anew "$_afrom"              || return 4
+  if [ $_index -ge 0 ]; then
+    [ $(( _atemp_size - _index )) -ge 1 ]                     || return 4
+  else
+    [ $(( _atemp_size + _index )) -ge 0 ]                     || return 5
+  fi
+
+  pecho "${_atemp[$_index]}"
+  unset '_atemp[$_index]'
+  arrr_array_duplicate_from_to _atemp "$_afrom"                 || return 6
 }
 
 test__arrr_pop() {
   local _func="arrr_pop" _c _res
   ! $_func                                                      || return 1
-  ! $_func _notdefined "one"                                    || return 2
+  ! $_func _c                                                   || return 2
+  ! $_func _notdefined "one"                                    || return 3
 
   _c=(one two "three four" four five six seven)
-  [ ${#_c[@]} -eq 7 ]                                           || return 3
-  
-  [ "$($_func _c)" == "seven" ]                                 || return 4
+  [ ${#_c[@]} -eq 7 ]                                           || return 4
+ 
+  _res="$($_func _c)" && _ret=$? || _ret=$?
+  [ "$($_func _c)" == "seven" ]                                 || return 5
   ## We popped it in a subshell. We need to do it in this shell:
-  $_func _c &> /dev/null                                        || return 5
-  [ ${#_c[@]} -eq 6 ]                                           || return 6
+  $_func _c &> /dev/null                                        || return 6
+  ## (one two "three four" four five six)
+  [ ${#_c[@]} -eq 6 ]                                           || return 7
 
-  [ "$($_func _c 2)" == "three four" ]                          || return 7
-  [ "$($_func _c -5)" == "two" ]                                || return 8
-  ! $_func _c -10                                               || return 9
-  [ ${#_c[@]} -eq 6 ]                                           || return 10
+  [ "$($_func _c 2)" == "three four" ]                          || return 8
+  [ "$($_func _c -5)" == "two" ]                                || return 9
+  [ "$($_func _c -6)" == "one" ]                                || return 10
+  ! $_func _c -7                                                || return 11
+  [ ${#_c[@]} -eq 6 ]                                           || return 12
 
-  $_func _c &> /dev/null                                        || return 11
-  $_func _c &> /dev/null                                        || return 12
-  return 77
-  [ "$($_func _c -4)" == "two" ]                                || return 8
-  [ "$($_func _c 2)" = "three four" ]                           || return 9
-  [ "$($_func _c 2)" = "three four" ]                           || return 10
-  $_func _c 2 &> /dev/null                                      || return 11
-  [ ${#_c[@]} -eq 3 ]                                           || return 12
+  _c=(one)
+  ! $_func _c -2                                                || return 13
+  _res="$($_func _c)" && _ret=$? || _ret=$?
+  $_func _c &> /dev/null                                        || return 14
+  [ ${#_c[@]} -eq 0 ]                                           || return 15 
+  ! $_func _c &> /dev/null                                      || return 16 
+ 
+
 } && tsh__add_func test__arrr_pop
 
 function arrr_pop_name() {
