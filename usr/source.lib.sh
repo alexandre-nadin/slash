@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 source testsh.lib
+source array-ref.lib
 
 is_sourced() {
   #
@@ -14,7 +15,6 @@ is_sourced() {
 test__is_sourced() {
   cat << 'eol' > ${tsh__TEST_DIR}/test_sourced_1.sh
 #!/usr/bin/env bash
-echo "BASH_SOURCE[@]: '${BASH_SOURCE[@]}'"
 source source.lib
 is_sourced                                                      || exit 1
 eol
@@ -25,13 +25,57 @@ eol
 #!/usr/bin/env bash
 source source.lib
 is_sourced                                                      || exit 1
-echo "BASH_SOURCE[@]: '\${BASH_SOURCE[@]}'"
 source "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 2
 ! bash "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 3
 eol
   (source ${tsh__TEST_DIR}/test_sourcing_1.sh)                  || return 3
 
 } && tsh__add_func test__is_sourced
+
+
+# --------------------------
+# Unique sourcing of files
+# --------------------------
+src__SOURCED_PREFIX="_srced__"
+src__sourced_files=()
+
+unique_source() {
+  #
+  # Sources a file only if it has not already been sourced.
+  # Keeps track of each sourced file.
+  #
+  [ $# -eq 1 ]                                                  || return 1
+  local _src="$1"
+  # Strip the file name before sourcing it (no parenthesis)
+  arrr_add_unique src__sourced_files $_src                      || return 2
+  source $_src                                                  || return 3
+   
+}
+
+test__unique_source() {
+  local _func="unique_source"
+  # -------------
+  # Basic tests
+  # -------------
+  ! $_func                                                      || return 1
+  $_func logging.lib                                            || return 2
+  ! $_func logging.lib                                          || return 3
+  $_func array-ref.lib                                          || return 4
+  ! $_func array-ref.lib                                        || return 5
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 6
+ 
+  ! $_func " logging.lib"                                       || return 7
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 8
+  ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array-ref.lib" ] \
+                                                                || return 9
+  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array-ref.lib" ] \
+                                                                || return 10
+
+  # --------------
+  # Deeper tests
+  # --------------
+} && tsh__add_func test__unique_source
+
 
 # ----
 # Not reviewed
