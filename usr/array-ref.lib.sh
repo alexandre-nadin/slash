@@ -231,9 +231,9 @@ function arrr_pop() {
   
   ## Check index is not out of bound
   if [ $_index -ge 0 ]; then
-    [ $(( _atemp_size - _index )) -ge 1 ]                     || return 4
+    [ $(( _atemp_size - _index )) -ge 1 ]                       || return 4
   else
-    [ $(( _atemp_size + _index )) -ge 0 ]                     || return 5
+    [ $(( _atemp_size + _index )) -ge 0 ]                       || return 5
   fi
 
   printf "${_atemp[$_index]}\n"
