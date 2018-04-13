@@ -61,6 +61,28 @@ test__reset_unique_source_files() {
   [ "${#src__sourced_files[@]}" -eq 0 ]                         || return 7
 } && tsh__add_func test__reset_unique_source_files
 
+add_unique_source() {
+  #
+  # Adds the given string to a list of tracked files it is does not already
+  # exist.
+  #
+  [ $# -eq 1 ]                                                  || return 1
+  ! arrr_contains src__sourced_files "$1"                       || return 2
+  arrr_add_unique src__sourced_files "$1"                       || return 3
+}
+
+test__add_unique_source() {
+  local _func="add_unique_source" _ret
+  reset_unique_source_files                                     || return 1
+  ! $_func                                                      || return 2
+  $_func first                                                  || return 3
+  $_func second                                                 || return 4
+  $_func " first"                                               || return 5
+  ! $_func "first"                                              || return 6
+  [ "$(echo "${src__sourced_files[@]}")" \
+      == "first second  first" ]                                || return 7
+} && tsh__add_func test__add_unique_source
+
 unique_source() {
   #
   # Sources a file only if it has not already been sourced.
