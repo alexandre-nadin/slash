@@ -104,25 +104,26 @@ test__unique_source() {
   #  - be soured without error
   #  - registered
   local _func="unique_source" _ret
+  reset_unique_source_files                                     || return 1
   # -------------
   # Basic tests
   # -------------
-  ! $_func                                                      || return 1
-  $_func logging.lib                                            || return 2
-  ! $_func logging.lib                                          || return 3
-  $_func array-ref.lib                                          || return 4
-  ! $_func array-ref.lib                                        || return 5
-  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 6
+  ! $_func                                                      || return 2
+  $_func logging.lib                                            || return 3
+  ! $_func logging.lib                                          || return 4
+  $_func array-ref.lib                                          || return 5
+  ! $_func array-ref.lib                                        || return 6
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 7
  
-  ! $_func " logging.lib"                                       || return 7
-  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 8
+  ! $_func " logging.lib"                                       || return 8
+  [ ${#src__sourced_files[@]} -eq 2 ]                           || return 9
 
   $_func "loggi" &> /dev/null && _ret=$? || _ret=$?
-  ! arrr_contains src__sourced_files "loggi"                    || return 9
+  ! arrr_contains src__sourced_files "loggi"                    || return 10
   ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array-ref.lib" ] \
-                                                                || return 10
-  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array-ref.lib" ] \
                                                                 || return 11
+  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array-ref.lib" ] \
+                                                                || return 12
 
   # --------------
   # Deeper tests
@@ -153,21 +154,21 @@ eol
 
   (source $_f1 \
      && [ ! -z ${SOURCED_VAR:+x} ] \
-     && [ $SOURCED_VAR -eq 1 ])                                 || return 12
+     && [ $SOURCED_VAR -eq 1 ])                                 || return 13
 
   ## File sourcing $_f1
   cat << eol > $_f2
 #!/usr/bin/env bash
-source $_f1                                                     || exit 13
 source $_f1                                                     || exit 14
-[ \$SOURCED_VAR -eq 2 ]                                         || exit 15
+source $_f1                                                     || exit 15
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 16
  
 source source.lib
-src::source $_f1                                                || exit 16
-[ \$SOURCED_VAR -eq 3 ]                                         || exit 17
+src::source $_f1                                                || exit 17
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 18
 
-! src::source $_f1                                              || exit 18
-[ \$SOURCED_VAR -eq 3 ]                                         || exit 19
+! src::source $_f1                                              || exit 19
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 20
 eol
 
   (bash $_f2)                                                   || return $?
@@ -175,11 +176,11 @@ eol
   ## File _f3 sourcing _f1
   cat << eol > $_f3
 #!/usr/bin/env bash
-source source.lib                                               || exit 20
-src::source $_f1                                                || exit 21
-source $_f1                                                     || exit 22
-! src::source $_f1                                              || exit 23
-[ \$SOURCED_VAR -eq 2 ]                                         || exit 24
+source source.lib                                               || exit 21
+src::source $_f1                                                || exit 22
+source $_f1                                                     || exit 23
+! src::source $_f1                                              || exit 24
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 25
 
 eol
   (bash $_f3)                                                   || return $?
@@ -187,24 +188,24 @@ eol
   ## File sourcing all
   cat << eol > $_f4
 #!/usr/bin/env bash
-source source.lib                                               || exit 25
+source source.lib                                               || exit 26
 
-src::source $_f3                                                || exit 26
-[ \$SOURCED_VAR -eq 2 ]                                         || exit 27
+src::source $_f3                                                || exit 27
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 28
 
-! src::source $_f3                                              || exit 28
-[ \$SOURCED_VAR -eq 2 ]                                         || exit 29
+! src::source $_f3                                              || exit 29
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 30
 
-! src::source $_f1                                              || exit 30
-[ \$SOURCED_VAR -eq 2 ]                                         || exit 31
+! src::source $_f1                                              || exit 31
+[ \$SOURCED_VAR -eq 2 ]                                         || exit 32
 
-source $_f1                                                     || exit 32
-[ \$SOURCED_VAR -eq 3 ]                                         || exit 33
+source $_f1                                                     || exit 33
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 34
 
-! src::source $_f1                                              || exit 34
-[ \$SOURCED_VAR -eq 3 ]                                         || exit 35
+! src::source $_f1                                              || exit 35
+[ \$SOURCED_VAR -eq 3 ]                                         || exit 36
 
-src::source $_f0                                                || exit 36
+src::source $_f0                                                || exit 37
 eol
   (bash $_f4)                                                   || return $?
 } && tsh__add_func test__unique_source
