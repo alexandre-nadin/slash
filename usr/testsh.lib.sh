@@ -20,7 +20,7 @@
 ########################################
 set -euf -o pipefail
 
-tsh__TEST_DIR="tests"
+tsh__TEST_DIR="./.testsh"
 
 ## Array of functions to test
 tsh__funcs=()
