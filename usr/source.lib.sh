@@ -5,31 +5,50 @@ source array-ref.lib
 is_sourced() {
   #
   # Checks if the sourcing file has been sourced itself.
-  #
-  [ "${BASH_SOURCE[1]}" = "${0}" ] \
-   && return 1 \
-   || return 0
-
+  # 
+  [ ${#BASH_SOURCE[@]} -gt 1 ]                                  || return 1
+  ! [ "${BASH_SOURCE[1]}" = "${0}" ]                            || return 2 
 }
 
 test__is_sourced() {
-  cat << 'eol' > ${tsh__TEST_DIR}/test_sourced_1.sh
+  local _func="unique_source" _ret _f{1..3}
+  _f1=${tsh__TEST_DIR}/test__source_is_sourced_1.sh
+  _f2=${tsh__TEST_DIR}/test__source_is_sourced_2.sh
+  _f3=${tsh__TEST_DIR}/test__source_is_sourced_3.sh
+
+  ## Test if self sourced? 
+  is_sourced                                                    || return 1
+
+  ## Test if executed or sourced
+  cat << 'eol' > $_f1
 #!/usr/bin/env bash
 source source.lib
-is_sourced                                                      || exit 1
+is_sourced                                                      || exit 2
 eol
-  ! (bash ${tsh__TEST_DIR}/test_sourced_1.sh)                   || return 2
-  (source ${tsh__TEST_DIR}/test_sourced_1.sh)                   || return 3
+  ! (bash $_f1)                                                 || return 3
+  (source $_f1)                                                 || return 4
 
-  cat << eol > ${tsh__TEST_DIR}/test_sourcing_1.sh
+  cat << eol > $_f2
 #!/usr/bin/env bash
 source source.lib
-is_sourced                                                      || exit 1
-source "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 2
-! bash "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 3
+is_sourced                                                      || exit 5
+source "$_f1"                                                   || exit 6
+! bash "$_f1"                                                   || exit 7
 eol
-  (source ${tsh__TEST_DIR}/test_sourcing_1.sh)                  || return 3
+  (source $_f2)                                                 || return $?
 
+  ## Test incremental bias
+  cat << eol > $_f3
+#!/usr/bin/env bash
+source source.lib
+function f3_is_sourced() {
+  is_sourced && return 0 || return 1
+}
+is_sourced                                                      || exit 8
+eol
+  (source $_f3; 
+   f3_is_sourced                                                || exit 9
+  )                                                             || return $?
 } && tsh__add_func test__is_sourced
 
 
