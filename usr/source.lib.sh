@@ -24,11 +24,11 @@ eol
   cat << eol > ${tsh__TEST_DIR}/test_sourcing_1.sh
 #!/usr/bin/env bash
 source source.lib
-is_sourced                                                      || exit 1
-source "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 2
-! bash "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 3
+is_sourced                                                      || exit 4
+source "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 5
+! bash "${tsh__TEST_DIR}/test_sourced_1.sh"                     || exit 6
 eol
-  (source ${tsh__TEST_DIR}/test_sourcing_1.sh)                  || return 3
+  (source ${tsh__TEST_DIR}/test_sourcing_1.sh)                  || return $?
 
 } && tsh__add_func test__is_sourced
 
