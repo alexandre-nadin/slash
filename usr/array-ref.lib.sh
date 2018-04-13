@@ -270,8 +270,8 @@ function arrr_pop() {
   fi
 
   printf "${_atemp[$_index]}\n"
-  unset '_atemp[$_index]'
-  arrr_array_duplicate_from_to _atemp "$_afrom"                 || return 6
+  unset '_atemp[$_index]'                                       || return 6
+  arrr_array_duplicate_from_to _atemp "$_afrom"                 || return 7
 }
 
 test__arrr_pop() {
@@ -325,18 +325,18 @@ function arrr_pop_name() {
   _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
   _nb_idx=${#_indexes[@]}
   
-  ## Don't do anything if no index found.
-  ! [ $_nb_idx -eq 0 ]                                          || return 0
+  ## Return error if no index found
+  ! [ $_nb_idx -eq 0 ]                                          || return 4
 
   ## Pop the first index found
   _index=${_indexes[$(( _nb_idx -1 ))]}
-  arrr_pop "$_afrom" $_index                                    || return 4
+  arrr_pop "$_afrom" $_index                                    || return 5
 }
 
 test__arrr_pop_name() {
   local _func="arrr_pop_name" _c
   ! $_func                                                      || return 1
-  $_func _c "one"                                               || return 2
+  ! $_func _c "one"                                             || return 2
   [ "$($_func _c 'one')" == "" ]                                || return 3
   _c=(one two "three four" four one)
   [ "$($_func _c '')" = "" ]                                    || return 4
