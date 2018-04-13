@@ -42,6 +42,25 @@ alias 'src::source'='unique_source'
 src__SOURCED_PREFIX="_srced__"
 src__sourced_files=()
 
+reset_unique_source_files() {
+  #
+  # Resets the array of unique sourced files.
+  #
+  [ $# -eq 0 ]                                                  || return 1
+  src__sourced_files=()                                         || return 2
+}
+
+test__reset_unique_source_files() {
+  local _func="reset_unique_source_files" _ret
+  ! $_func one two                                              || return 1
+  [ "${#src__sourced_files[@]}" -eq 0 ]                         || return 2
+  src__sourced_files=(one two three)                            || return 3
+  [ "${#src__sourced_files[@]}" -eq 3 ]                         || return 4
+  $_func                                                        || return 5
+  $_func                                                        || return 6
+  [ "${#src__sourced_files[@]}" -eq 0 ]                         || return 7
+} && tsh__add_func test__reset_unique_source_files
+
 unique_source() {
   #
   # Sources a file only if it has not already been sourced.
