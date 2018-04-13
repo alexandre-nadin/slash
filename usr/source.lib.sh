@@ -83,17 +83,46 @@ test__add_unique_source() {
       == "first second  first" ]                                || return 7
 } && tsh__add_func test__add_unique_source
 
+remove_unique_source() {
+  #
+  # Removes the given string from the list of tracked files if it exists.
+  #
+  [ $# -eq 1 ]                                                  || return 1
+  arrr_pop_name src__sourced_files "$1" &> /dev/null            || return 2
+}
+
+test__remove_unique_source() {
+  local _func="remove_unique_source" _ret
+  reset_unique_source_files                                     || return 1
+  ! $_func                                                      || return 2
+  [ ${#src__sourced_files[@]} -eq 0 ]                           || return 3
+  ! $_func first                                                || return 4
+  ! $_func second                                               || return 5
+  add_unique_source "first"                                     || return 6
+  add_unique_source "second"                                    || return 7
+  add_unique_source " first"                                    || return 8
+  [ ${#src__sourced_files[@]} -eq 3 ]                           || return 9
+  ! $_func "  first"                                            || return 10
+  $_func " first"                                               || return 11
+  $_func "first"                                                || return 12
+  [ ${#src__sourced_files[@]} -eq 1  ]                          || return 13
+  add_unique_source "first"                                     || return 14
+} && tsh__add_func test__remove_unique_source
+
 unique_source() {
   #
   # Sources a file only if it has not already been sourced.
-  # Keeps track of each sourced file.
+  # Save the provided file name.
+  # Sources it. Removes it if sourcing failes.
   #
   [ $# -eq 1 ]                                                  || return 1
   local _src="$1"
   # Strip the file name before (passing without parenthesis)
-  # 
-  ! arrr_contains src__sourced_files $_src                      || return 2
-  source $_src                                                  || return 3
+  ! add_unique_source $_src                                     || return 2
+  if ! source $_src; then
+    arrr_pop_name                                              || return 3
+     
+  fi
   arrr_add_unique src__sourced_files $_src                      || return 4
 }
 
