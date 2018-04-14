@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 source testsh.lib
 source array-ref.lib
+source numbers.lib
 
 is_sourced() {
   #
   # Checks if the sourcing file has been sourced itself.
   # 
-  [ ${#BASH_SOURCE[@]} -gt 1 ]                                  || return 1
-  ! [ "${BASH_SOURCE[1]}" = "${0}" ]                            || return 2 
+  [ $# -ge 0 ]                                                  || return 1
+  local _increm_bias=${1:-0}
+  ++ _increm_bias     || return 2
+  [ ${#BASH_SOURCE[@]} -gt 1 ]                                  || return 3
+  ! [ "${BASH_SOURCE[${_increm_bias}]}" = "${0}" ]            || return 4 
 }
 
 test__is_sourced() {
@@ -42,7 +46,7 @@ eol
 #!/usr/bin/env bash
 source source.lib
 function f3_is_sourced() {
-  is_sourced && return 0 || return 1
+  is_sourced && return 0                                        || return 1
 }
 is_sourced                                                      || exit 8
 eol
@@ -197,8 +201,8 @@ function src__is_sourced() {
   # Tells if the sourcing file has been sourced itself.
   #
   [[ "${BASH_SOURCE[1]}" = "${0}" ]] \
-   && return 1 \
-   || return 0
+                                                                && return 1 \
+                                                                || return 0
 }
 
 
@@ -208,7 +212,7 @@ function src_source() {
   #
   for sfile in "$@"; do
     src_source_file "$sfile" \
-     || return 1
+                                                                || return 1
   done
 }
 
@@ -223,7 +227,7 @@ function src_source_uniq() {
      && continue \
      || src_source_file "$sfile" \
      || echo -e "Could not source \"$sfile\"." >&2 \
-     && return 1
+                                                                && return 1
   done
 }
 
@@ -262,7 +266,7 @@ function src_is_sourced() {
   local vfile=$(_src_file_to_var "$sfile")
   echo -e "checking variable \"$vfile\"= ${!vfile}" >&2
   [ -z "${!vfile:+x}" ] \
-   && return 1 \
-   || return 0
+                                                                && return 1 \
+                                                                || return 0
 }
 
