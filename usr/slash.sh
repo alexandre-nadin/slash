@@ -1,22 +1,13 @@
 #!/usr/bin/env bash
-slash::source() {
-  #
-  # Saves the current shell set options before sourcing the given file.
-  # Restores them afterwords.
-  #
-  local _setoptions=$(set +o | sed 's/$/;/g')
-  source "$1"
-  eval "$_setoptions"
-}
-
-source logging.lib
-source io.lib
-source decorator.sh
-
-slash::safesource() {
-  :
-}
-
+# -----------------
+# Unique sourcing
+# -----------------
+## Here we make the first sourcing of source.lib to directly set usource available.
+if type usource &> /dev/null; then
+  usource source.lib || :
+else
+  source source.lib || return 2
+fi
 
 alias @slash-greet='read_funtemp; deco::defun <<< "$(slash::greet <<< "$funtemp")"' 
 slash::greet() {
@@ -35,5 +26,3 @@ slash::greet() {
   }
 eol
 }
-
-set +euf +o pipefail

@@ -18,8 +18,6 @@
 #      tsh__test_funcs
 #
 ########################################
-set -euf -o pipefail
-
 tsh__TEST_DIR="./.testsh"
 
 ## Array of functions to test

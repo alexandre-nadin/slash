@@ -11,7 +11,6 @@ retexit() {
   # If no value is given, return status is 0.
   #
   local _value="${1:-0}"
-  is_sourced && echo " -> sourced (${BASH_SOURCE[0]})" || echo " -> not sourced (${BASH_SOURCE[0]})"
   is_sourced && return $_value || exit $_value
 }
 
