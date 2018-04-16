@@ -13,7 +13,7 @@ eol
 }
 
 # -----
-RET_PATTERN='\|\| return |&& return '
+RET_PATTERN='(\|\||&&) (return|retexit|exit) '
 RET_OFFSET=65
 
 ! [ $# -ge 1 ] && manual && exit 1 || :
@@ -35,10 +35,11 @@ for _l in "${lines[@]}"; do
          | head -n1)
   
   offset=$(( RET_OFFSET - col - 1 ))
-  [ $offset -gt 0 ] \
-    && echo "adding offset of $offset to pattern from line $_l" >&2 \
+  if [ $offset -gt 0 ]; then
+    echo "adding offset of $offset to pattern from line $_l" >&2 \
     && sed -i -E \
-        "${_l}s/(.*)($RET_PATTERN)(.*)/\1$(printf ' %.0s' $(seq 1 ${offset}))\2\3/" \
+        "${_l}s/(.*)($RET_PATTERN)(.*)?/\1$(printf ' %.0s' $(seq 1 ${offset}))\2\5/" \
         "$FILE" \
     || : 
+  fi
 done
