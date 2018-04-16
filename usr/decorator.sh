@@ -1,9 +1,10 @@
 #!/usr/bin/bash
-source logging.lib
-source testsh.lib 
-source io.lib
-source variable.lib
-source array-ref.lib
+source slash.sh
+source::unique logging.lib
+source::unique testsh.lib 
+source::unique io.lib
+source::unique variable.lib
+source::unique array-ref.lib
 
 # --------------
 # Requirements

@@ -35,6 +35,7 @@ eol
 #   source $_f1; echo "failed? $?"; 
 #   set -euf; echo hi; true; echo ho; false; echo hu 
 #  )
+  set -euf
   (set -euf; echo hi; true; echo ho; false; echo hu)
   echo "?: $?"
   set -euf 
@@ -173,6 +174,37 @@ test__remove_unique_source() {
   add_unique_source "first"                                     || return 14
 } && tsh__add_func test__remove_unique_source
 
+# ------------------------------------------------------------------------------ 
+# Unique sourcing
+#
+# 'unique_source' is the function that does the unique sourcing. It returns a 
+# non-zero value if the sourcing cannot be done. It is used for the tests.
+# 'usource' and 'source::unique_strict' are the kindof front-end functions call 
+# 'unique_source'. Those may be used in your script. 'source::unique' does the same
+# except if always returns 0. Use with caution then, with tested scripts and librares. 
+#
+# ------------------------------------------------------------------------------
+usource() {
+  unique_source "$@" || return $?
+}
+
+source::unique() {
+  #
+  # Sources the given file only if it has not already been sourced.
+  # Return status is always 0, to be used for ignoring redundant sourcing.
+  # Use if you are sure the library required do exist and are tested.
+  #
+  unique_source "$@" || :
+}
+
+source::unique_strict() {
+  #
+  # Sources the given file only if it has not already been sourced.
+  # Return error status if it cannot source it.
+  #
+  unique_source "$@" || return $?
+} 
+
 unique_source() {
   #
   # Sources a file only if it has not already been sourced.
@@ -187,9 +219,6 @@ unique_source() {
     remove_unique_source $_src                               || return 3
   fi
 }
-shopt -s expand_aliases
-alias 'src::source'='unique_source'
-alias 'usource'='unique_source'
 
 test__unique_source() {
   # The file to source should:
@@ -263,10 +292,10 @@ source $_f1                                                     || retexit 15
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 16
  
 source source.lib
-src::source $_f1                                                || retexit 17
+source::unique $_f1                                                || retexit 17
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 18
 
-! src::source $_f1                                              || retexit 19
+! source::unique $_f1                                              || retexit 19
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 20
 eol
 
@@ -281,9 +310,9 @@ echo "Being sourced (BASH_SOURCE:\${BASH_SOURCE[@]}"
 source script.sh
 source source.lib                                               || retexit 21
 
-src::source $_f1                                                || retexit 22
+source::unique $_f1                                                || retexit 22
 source $_f1                                                     || retexit 23
-! src::source $_f1                                              || retexit 24
+! source::unique $_f1                                              || retexit 24
 #echo "SOURCED_VAR: \$SOURCED_VAR"
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 25
 
@@ -297,27 +326,27 @@ eol
 source source.lib                                               || retexit 26
 
 echo "[add F3]"
-src::source $_f3                                                || retexit 27
+source::unique $_f3                                                || retexit 27
 echo "src__sourced_files: \${src__sourced_files[@]}"
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 28
 
 echo "src__sourced_files: \${src__sourced_files[@]}"
 retexit 77
-src::source $_f3 && _ret=\$? || _ret=\$?
+source::unique $_f3 && _ret=\$? || _ret=\$?
 echo "_ret: \$_ret; SOURCED_VAR: \$SOURCED_VAR"
 #[ \$_ret -eq 25                                || retexit 29
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 30
 
-! src::source $_f1                                              || retexit 31
+! source::unique $_f1                                              || retexit 31
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 32
 
 source $_f1                                                     || retexit 33
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 34
 
-! src::source $_f1                                              || retexit 35
+! source::unique $_f1                                              || retexit 35
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 36
 
-src::source $_f0                                                || retexit 37
+source::unique $_f0                                                || retexit 37
 eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
