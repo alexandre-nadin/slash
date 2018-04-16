@@ -2,9 +2,9 @@
 # -----------------
 # Unique sourcing
 # -----------------
-## Here we make the first sourcing of source.lib to directly set usource available.
-if type usource &> /dev/null; then
-  usource source.lib || :
+## Here we make the first sourcing of source.lib to directly set source::unique available.
+if type source::unique &> /dev/null; then
+  source::unique source.lib || :
 else
   source source.lib || return 2
 fi
