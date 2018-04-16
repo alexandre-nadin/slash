@@ -4,7 +4,7 @@ safe_source() {
   # Saves the current shell set options before sourcing the given file.
   # Restores them afterwards.
   #
-  [ $# -eq 1 ]  || return 1
+  [ $# -eq 1 ]                                                  || return 1
   local _setoptions _ret
   _ret=0
   _setoptions=$(set +o | sed 's/$/;/g')  || _ret=1
@@ -27,7 +27,7 @@ test__safe_source() {
   cat << 'eol' > $_f1
 #!/usr/bin/env bash
 set -euf -o pipefail
-ercho &> /dev/null || return 1
+ercho &> /dev/null                                              || return 1
 echo "You should not see this." >&2 
 return 0
 eol
@@ -41,8 +41,8 @@ eol
   set -euf 
   erccho &>/dev/null
   echo passed
-  [ $? -eq 0 ]   || return 1
-  #(source $_f1 && echo sourced _f2|| echo failed sourcing _f2)  || return 4
+  [ $? -eq 0 ]                                                  || return 1
+  #(source $_f1 && echo sourced _f2|| echo failed sourcing _f2) || return 4
 
 
 } && tsh__add_func test__safe_source
@@ -54,9 +54,9 @@ is_sourced() {
   # 
   [ $# -ge 0 ]                                                  || return 1
   local _increm_bias=${1:-0}
-  ++ _increm_bias     || return 2
+  ++ _increm_bias                                               || return 2
   [ ${#BASH_SOURCE[@]} -gt 1 ]                                  || return 3
-  ! [ "${BASH_SOURCE[${_increm_bias}]}" = "${0}" ]            || return 4 
+  ! [ "${BASH_SOURCE[${_increm_bias}]}" = "${0}" ]              || return 4 
 }
 
 test__is_sourced() {
@@ -91,7 +91,8 @@ eol
 #!/usr/bin/env bash
 source source.lib
 function f3_is_sourced() {
-  is_sourced && return 0                                        || return 1
+  is_sourced                                                    && return 0 \
+                                                                || return 1
 }
 is_sourced                                                      || exit 8
 eol
@@ -185,7 +186,7 @@ test__remove_unique_source() {
 #
 # ------------------------------------------------------------------------------
 usource() {
-  unique_source "$@" || return $?
+  unique_source "$@"                                            || return $?
 }
 
 source::unique() {
@@ -202,7 +203,7 @@ source::unique_strict() {
   # Sources the given file only if it has not already been sourced.
   # Return error status if it cannot source it.
   #
-  unique_source "$@" || return $?
+  unique_source "$@"                                            || return $?
 } 
 
 unique_source() {
@@ -214,9 +215,9 @@ unique_source() {
   [ $# -eq 1 ]                                                  || return 1
   local _src="$1"
   # Strip the file name before (passing without parenthesis)
-  add_unique_source $_src                                     || return 2
+  add_unique_source $_src                                       || return 2
   if ! safe_source $_src; then
-    remove_unique_source $_src                               || return 3
+    remove_unique_source $_src                                  || return 3
   fi
 }
 
@@ -292,10 +293,10 @@ source $_f1                                                     || retexit 15
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 16
  
 source source.lib
-source::unique $_f1                                                || retexit 17
+source::unique $_f1                                             || retexit 17
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 18
 
-! source::unique $_f1                                              || retexit 19
+! source::unique $_f1                                           || retexit 19
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 20
 eol
 
@@ -310,9 +311,9 @@ echo "Being sourced (BASH_SOURCE:\${BASH_SOURCE[@]}"
 source script.sh
 source source.lib                                               || retexit 21
 
-source::unique $_f1                                                || retexit 22
+source::unique $_f1                                             || retexit 22
 source $_f1                                                     || retexit 23
-! source::unique $_f1                                              || retexit 24
+! source::unique $_f1                                           || retexit 24
 #echo "SOURCED_VAR: \$SOURCED_VAR"
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 25
 
@@ -326,7 +327,7 @@ eol
 source source.lib                                               || retexit 26
 
 echo "[add F3]"
-source::unique $_f3                                                || retexit 27
+source::unique $_f3                                             || retexit 27
 echo "src__sourced_files: \${src__sourced_files[@]}"
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 28
 
@@ -334,19 +335,19 @@ echo "src__sourced_files: \${src__sourced_files[@]}"
 retexit 77
 source::unique $_f3 && _ret=\$? || _ret=\$?
 echo "_ret: \$_ret; SOURCED_VAR: \$SOURCED_VAR"
-#[ \$_ret -eq 25                                || retexit 29
+#[ \$_ret -eq 25                                                || retexit 29
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 30
 
-! source::unique $_f1                                              || retexit 31
+! source::unique $_f1                                           || retexit 31
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 32
 
 source $_f1                                                     || retexit 33
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 34
 
-! source::unique $_f1                                              || retexit 35
+! source::unique $_f1                                           || retexit 35
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 36
 
-source::unique $_f0                                                || retexit 37
+source::unique $_f0                                             || retexit 37
 eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
