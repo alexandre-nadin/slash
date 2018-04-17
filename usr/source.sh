@@ -17,7 +17,7 @@ safe_source() {
 
 safe_source testslh.sh
 safe_source array-ref.lib
-safe_source numbers.lib
+safe_source number.sh
 
 test__safe_source() {
   local _func="safe_source" _ret _f1

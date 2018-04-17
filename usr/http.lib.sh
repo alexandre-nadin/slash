@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source functions.lib
 source functions.lib
-source numbers.lib
+source number.sh
 
 HTTP_TYPES=(\
   SUCCESSFUL 
