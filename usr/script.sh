@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source testsh.lib
+source testslh.sh
 source source.lib
 
 shopt -s expand_aliases

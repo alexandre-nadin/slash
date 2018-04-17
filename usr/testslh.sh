@@ -5,7 +5,7 @@
 # When a testing function is written, it shall be added to the list of
 # functions to test as following in your script:
 #
-#      source testsh.lib
+#      source testslh.sh
 #      function my_function_test() {
 #        dothis;
 #        dothat;
@@ -18,7 +18,7 @@
 #      tsh__test_funcs
 #
 ########################################
-tsh__TEST_DIR="./.testsh"
+tsh__TEST_DIR="./.testslh"
 
 ## Array of functions to test
 tsh__funcs=()

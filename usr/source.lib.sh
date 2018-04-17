@@ -15,7 +15,7 @@ safe_source() {
   return $_ret
 }
 
-safe_source testsh.lib
+safe_source testslh.sh
 safe_source array-ref.lib
 safe_source numbers.lib
 
