@@ -9,6 +9,11 @@ else
   source source.lib || return 2
 fi
 
+# ------------
+# Decorators
+# _-----------
+source::unique decorator.sh
+
 alias @slash-greet='read_funtemp; deco::defun <<< "$(slash::greet <<< "$funtemp")"' 
 slash::greet() {
   #

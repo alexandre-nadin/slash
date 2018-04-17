@@ -42,7 +42,7 @@ function test_requirements() {
 
 test_requirements \
 && set_grep \
-|| return 1
+                                                                || return 1
 
 
 # ----------
@@ -61,7 +61,7 @@ DECORATOR_LIMIT_REGEX="^\s*${DECORATOR_LIMIT}\s*$"
 
 #
 #  Because we need to read directly the template function declaration right
-# after the deecorator due to the (ba)sh language, I am forced to use aliases.
+# after the decorator due to the (ba)sh language, I am forced to use aliases here.
 #
 #  In order to successfully have the new functions' declarations at the currenti
 # scope, the 'function-declaring' them (defun) SHOULD NOT be piped. 
@@ -88,8 +88,8 @@ defun_name_recipe() {
   #
   # Declares a function from a name and a recipe given as input.
   #
-  local _fun_new=$(build_name_recipe_declaration "$@") || return 1
-  defun "$_fun_new" || return 2
+  local _fun_new=$(build_name_recipe_declaration "$@")          || return 1
+  defun "$_fun_new"                                             || return 2
 }
 
 build_name_recipe_declaration() {
@@ -97,7 +97,7 @@ build_name_recipe_declaration() {
   # Takes a function name and its recipe.
   # Outputs the function's declaration string.
   #
-  [ $# -eq 2 ] || return 1
+  [ $# -eq 2 ]                                                  || return 1
   cat << eol 
 ${1}() {
   ${2}
@@ -194,9 +194,9 @@ func_name() {
 test__func_name() {
   local _func="func_name"
   local _res
-  [ "$($_func ' function hello () { ')" == 'hello' ] || return 1
-  ! [ "$($_func ' function hello () { ')" == 'hello ' ] || return 2
-  ! [ "$($_func '  hello () { ')" == 'hello ' ] || return 3
+  [ "$($_func ' function hello () { ')" == 'hello' ]            || return 1
+  ! [ "$($_func ' function hello () { ')" == 'hello ' ]         || return 2
+  ! [ "$($_func '  hello () { ')" == 'hello ' ]                 || return 3
 
   local _f=$(cat <<eol
 
@@ -208,10 +208,10 @@ test__func_name() {
 eol
           )
   _res=$($_func "$_f")
-  ! [ "$_res" == 'tre-_llo12' ] || return 4
+  ! [ "$_res" == 'tre-_llo12' ]                                 || return 4
 
   _res=$($_func "$(sed '/^\s*$/d' <<< "$_f")")
-  [ "$_res" == 'tre-_llo12' ] || return 5
+  [ "$_res" == 'tre-_llo12' ]                                   || return 5
 
 } && tsh__add_func test__func_name
 
@@ -230,12 +230,12 @@ test__is_func_declaration() {
   #  Function declaration ends with a curly bracket.
   #
   local _func="is_func_declaration"
-  $_func "   function hello () { " || return 1
-  $_func " hello() { " || return 2
-  ! $_func "  func hello() { " || return 3
-  ! $_func "  func hello() " || return 4
-  $_func " function -_hle-lo () {  " || return 5
-  ! $_func " function -_hle-lo due () {  " || return 6
+  $_func "   function hello () { "                              || return 1
+  $_func " hello() { "                                          || return 2
+  ! $_func "  func hello() { "                                  || return 3
+  ! $_func "  func hello() "                                    || return 4
+  $_func " function -_hle-lo () {  "                            || return 5
+  ! $_func " function -_hle-lo due () {  "                      || return 6
 } && tsh__add_func test__is_func_declaration
 
 
@@ -295,9 +295,9 @@ decorate() {
   [ ${#_decorator_names[@]} -gt 0 ]                             || return 4
   
   ## Take last decorator
-  _decorator_name="${_decorator_names[$(( ${#_decorator_names[@]} - 1  ))]}"
-  arrr_pop _decorator_names &> /dev/null
-
+  _decorator_name=$(arrr_pop _decorator_names)                  || return 5
+  arrr_pop _decorator_names &> /dev/null                        || return 6
+  
   ## The decorator function should already have been declared
   declare -f "$_decorator_name" &> /dev/null                    || return 5
 
@@ -333,9 +333,11 @@ eol
     )" \
   )                                                             || return 9
 
+  #echo -e "\n# ------\n_decorated_declaration: \n""$_decorated_declaration"
   defun "$_decorated_declaration"                               || return 10
 
-  ## Decorate recursively
+  ## Decorate recursively if some decorators left
+  [ ${#_decorator_names[@]} -gt 0 ]                             || return 0
   decorate "$_decorated_declaration" "${_decorator_names[@]}"   || :
 }
 
@@ -345,28 +347,28 @@ test__decorate() {
   # ----------------
   tag-div() {
     local _res _ret
-    _res=$("$_func_decorable" "$@") || _ret=$?
+    _res=$("$_func_decorable" "$@") && _ret=$? || _ret=$?
     printf "<div>${_res}</div>\n"
     return $_ret
   }
  
   tag-p() {
     local _res _ret
-    _res=$("$_func_decorable" "$@") || _ret=$?
+    _res=$("$_func_decorable" "$@") && _ret=$? || _ret=$?
     printf "<p>${_res}</p>\n"
     return $_ret
   }
 
   tag-strong() {
     local _res _ret
-    _res=$("$_func_decorable" "$@") || _ret=$?
+    _res=$("$_func_decorable" "$@") && _ret=$? || _ret=$?
     printf "<strong>${_res}</strong>\n"
     return ${_ret:-$?}
   }
 
   @decorate \
   tag-div \
-  tag-p tag-strong || return 3
+  tag-p tag-strong                                              || return 3
   hello() {
     echo "Hello user"
 }
@@ -383,10 +385,10 @@ test__decorate() {
   # Negative tests
   # ----------------
   @decorate                                                     && return 1 || :
-  hello_no_deco() {
+  hello_no_decorator() {
     echo "hello $USER"
 }
-  !  is_function hello_no_deco                                  || return 2 
+  ! is_function hello_no_decorator                              || return 2 
 
   # ----- 
   wrong_decorable_return() {
@@ -442,7 +444,7 @@ test__decorate() {
 
 
 build_decorable_function_name() {  
-  [ $# -eq 2 ] || return 1               
+  [ $# -eq 2 ]                                                  || return 1               
   printf "${1}@${2}\n"                   
 }                                        
 
@@ -453,6 +455,3 @@ test__build_decorable_function_name() {
   [ "$($_func one two)" == "one@two" ]                          || return 3
   
 } && tsh__add_func test__build_decorable_function_name
-
-
-set +euf +o pipefail
