@@ -7,7 +7,7 @@
 # shell environment.
 #
 #
-source testsh.lib
+source testslh.sh
 
 function arrr_array_duplicate_from_to() {
   #

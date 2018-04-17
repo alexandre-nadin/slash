@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-#source testsh.lib
-
 function vars_enum() {
   #
   # Declares and enumerates all the given variable names from 0.

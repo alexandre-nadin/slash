@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-source testsh.lib
-source source.lib
+source testslh.sh
+source source.sh
 
 shopt -s expand_aliases
 alias rexit="is_sourced && return 6 || exit 7"
@@ -22,7 +22,7 @@ test__retexit() {
   
   cat << eol > $_f0
 #!/usr/bin/env bash
-source source.lib
+source source.sh
 set +eu
 source $_f1
 #echo "  _f1 ret: \$?"
@@ -32,7 +32,7 @@ eol
   cat << eol > $_f1
 #!/usr/bin/env bash
 source script.sh
-source source.lib
+source source.sh
 #is_sourced && echo " _f1 -> sourced" || echo " _f1 -> not sourced"
 
 rexit

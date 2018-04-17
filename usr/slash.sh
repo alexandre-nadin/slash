@@ -4,9 +4,9 @@
 # -----------------
 ## Here we make the first sourcing of source.lib to directly set source::unique available.
 if type source::unique &> /dev/null; then
-  source::unique source.lib || :
+  source::unique source.sh || :
 else
-  source source.lib || return 2
+  source source.sh                                              || return 2
 fi
 
 # ------------

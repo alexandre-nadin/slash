@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source testsh.lib
+source testslh.sh
 
 is_int() {
   #
