@@ -16,7 +16,7 @@ safe_source() {
 }
 
 safe_source testslh.sh
-safe_source array-ref.lib
+safe_source array.sh
 safe_source number.sh
 
 test__safe_source() {
@@ -236,8 +236,8 @@ test__unique_source() {
   
   $_func logging.lib                                            || return 3
   ! $_func logging.lib                                          || return 4
-  $_func array-ref.lib                                          || return 5
-  ! $_func array-ref.lib                                        || return 6
+  $_func array.sh                                          || return 5
+  ! $_func array.sh                                        || return 6
   [ ${#src__sourced_files[@]} -eq 2 ]                           || return 7
  
   ! $_func " logging.lib"                                       || return 8
@@ -247,9 +247,9 @@ test__unique_source() {
   #echo "_ret: '$_ret'"
   #echo "sourced: ${src__sourced_files[@]}"
   ! arrr_contains src__sourced_files "loggi"                    || return 10
-  ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array-ref.lib" ] \
+  ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array.sh" ] \
                                                                 || return 11
-  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array-ref.lib" ] \
+  [ "$(echo "${src__sourced_files[@]}")" == "logging.lib array.sh" ] \
                                                                 || return 12
 
   # --------------

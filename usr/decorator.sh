@@ -4,7 +4,7 @@ source::unique logging.lib
 source::unique testslh.sh
 source::unique io.lib
 source::unique variable.lib
-source::unique array-ref.lib
+source::unique array.sh
 
 # --------------
 # Requirements

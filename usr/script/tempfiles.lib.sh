@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 source logging.lib
 source trap.lib
-source array-ref.lib
+source array.sh
 
 ## List of tracked temporary files.
 _tmp_tmp_files=() 
