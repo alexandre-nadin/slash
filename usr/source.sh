@@ -71,7 +71,7 @@ test__is_sourced() {
   ## Test if executed or sourced
   cat << 'eol' > $_f1
 #!/usr/bin/env bash
-source source.lib
+source source.sh
 is_sourced                                                      || exit 2
 eol
   ! (bash $_f1)                                                 || return 3
@@ -79,7 +79,7 @@ eol
 
   cat << eol > $_f2
 #!/usr/bin/env bash
-source source.lib
+source source.sh
 is_sourced                                                      || exit 5
 source "$_f1"                                                   || exit 6
 ! bash "$_f1"                                                   || exit 7
@@ -89,7 +89,7 @@ eol
   ## Test incremental bias
   cat << eol > $_f3
 #!/usr/bin/env bash
-source source.lib
+source source.sh
 function f3_is_sourced() {
   is_sourced                                                    && return 0 \
                                                                 || return 1
@@ -292,7 +292,7 @@ source $_f1                                                     || retexit 14
 source $_f1                                                     || retexit 15
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 16
  
-source source.lib
+source source.sh
 source::unique $_f1                                             || retexit 17
 [ \$SOURCED_VAR -eq 3 ]                                         || retexit 18
 
@@ -309,7 +309,7 @@ return 0
 #!/usr/bin/env bash
 echo "Being sourced (BASH_SOURCE:\${BASH_SOURCE[@]}"
 source script.sh
-source source.lib                                               || retexit 21
+source source.sh                                                || retexit 21
 
 source::unique $_f1                                             || retexit 22
 source $_f1                                                     || retexit 23
@@ -324,7 +324,7 @@ eol
   ## File sourcing all
   cat << eol > $_f4
 #!/usr/bin/env bash
-source source.lib                                               || retexit 26
+source source.sj                                                || retexit 26
 
 echo "[add F3]"
 source::unique $_f3                                             || retexit 27
