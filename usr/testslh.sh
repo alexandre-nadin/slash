@@ -19,7 +19,7 @@
 #
 ########################################
 tsh__TEST_DIR="./.testslh"
-
+#source decorator.sh
 ## Array of functions to test
 tsh__funcs=()
 
