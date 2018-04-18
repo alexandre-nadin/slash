@@ -9,7 +9,7 @@
 #      function my_function_test() {
 #        dothis;
 #        dothat;
-#        true || return 1
+#        true                                                   || return 1
 #      } && tsh__add_func my_function_test
 #      # ...
 #
@@ -18,7 +18,11 @@
 #      tsh__test_funcs
 #
 ########################################
+source source.sh
+source::unique decorator.sh
+
 tsh__TEST_DIR="./.testslh"
+tsh__TEST_FILE_PREXIX="test__"
 
 ## Array of functions to test
 tsh__funcs=()
