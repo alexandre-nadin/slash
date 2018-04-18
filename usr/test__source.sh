@@ -73,12 +73,13 @@ eol
 test__reset_unique_source_files() {
   local _func="reset_unique_source_files" _ret
   ! $_func one two                                              || return 1
-  [ "${#src__sourced_files[@]}" -eq 2 ]                         || return 2
-  src__sourced_files=(one two three)                            || return 3
-  [ "${#src__sourced_files[@]}" -eq 3 ]                         || return 4
-  $_func                                                        || return 5
+  $_func                                                        || return 2
+  [ "${#src__sourced_files[@]}" -eq 1 ]                         || return 3
+  src__sourced_files=(one two three)                            || return 4
+  [ "${#src__sourced_files[@]}" -eq 3 ]                         || return 5
   $_func                                                        || return 6
-  [ "${#src__sourced_files[@]}" -eq 1 ]                         || return 7
+  $_func                                                        || return 7
+  [ "${#src__sourced_files[@]}" -eq 1 ]                         || return 8
 } && tsh__add_func test__reset_unique_source_files
 
 test__is_source_list_empty() {
@@ -107,7 +108,7 @@ test__add_unique_source() {
   $_func " first"                                               || return 5
   ! $_func "first"                                              || return 6
   [ "$(echo "${src__sourced_files[@]}")" \
-      == "$(basename ${BASH_SOURCE[0]}) first second  first" ]  || return 7
+      == "source.sh first second  first" ]                      || return 7
 } && tsh__add_func test__add_unique_source
 
 test__remove_unique_source() {
@@ -155,7 +156,7 @@ test__unique_source() {
   ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array.sh" ] \
                                                                 || return 12
   [ "$(echo "${src__sourced_files[@]}")" \
-     == "$(basename ${BASH_SOURCE[0]}) logging.lib array.sh" ] \
+     == "source.sh logging.lib array.sh" ] \
                                                                 || return 13
 
   # --------------
@@ -258,6 +259,3 @@ eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
 } && tsh__add_func test__unique_source
-
-
-

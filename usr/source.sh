@@ -23,7 +23,7 @@ reset_unique_source_files() {
   # Resets the array of unique sourced files.
   #
   [ $# -eq 0 ]                                                  || return 1
-  src__sourced_files=("$(basename ${BASH_SOURCE[1]})")          || return 2
+  src__sourced_files=("$(basename ${BASH_SOURCE[0]})")          || return 2 
 } && reset_unique_source_files
 
 is_source_list_empty() {
@@ -32,8 +32,8 @@ is_source_list_empty() {
 
 contains_source() {
   [ $# -eq 1 ]                                                  || return 1
-  ! is_source_list_empty \
-  && grep -q -s " $1 " <<< " ${src__sourced_files[@]} "         || return 2
+  ! is_source_list_empty                                        || return 2
+  grep -q -s " $1 " <<< " ${src__sourced_files[@]} "            || return 3
 }
 
 add_source() {
