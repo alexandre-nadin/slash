@@ -17,7 +17,7 @@ file_bn=$(basename "$file_path")
 
 test_path="${file_dir}/${tsh__TEST_FILE_PREXIX}${file_bn}"
 
-[ -f "${test_path}" ] || errexit "Could not find testing file '${test_path}' to test '${file_path}'."
+[ -f "${test_path}" ] || errexit "Missing testing file '${test_path}' for '${file_path}'."
 
 printf "[Testing '$1'] path: ${test_path}\n" >&2
 
