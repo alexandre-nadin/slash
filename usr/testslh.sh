@@ -5,11 +5,11 @@
 # When a testing function is written, it shall be added to the list of
 # functions to test as following in your script:
 #
-#      source testsh.lib
+#      source testslh.sh
 #      function my_function_test() {
 #        dothis;
 #        dothat;
-#        true || return 1
+#        true                                                   || return 1
 #      } && tsh__add_func my_function_test
 #      # ...
 #
@@ -18,7 +18,11 @@
 #      tsh__test_funcs
 #
 ########################################
-set -euf -o pipefail
+source source.sh
+source::unique decorator.sh
+
+tsh__TEST_DIR="./.testslh"
+tsh__TEST_FILE_PREXIX="test__"
 
 ## Array of functions to test
 tsh__funcs=()
@@ -39,15 +43,17 @@ tsh__test_funcs() {
   #
   # Launches all the registered testing functions.
   #
+  set +u
+  mkdir -p $tsh__TEST_DIR
   local _status=0
   for _test in "${tsh__funcs[@]}"; do
-    printf "Testing function '$_test'" >&2 
     $_test \
-     && printf "\tv OK\n" >&2 \
+     && printf " v OK - function '$_test'\n" >&2 \
      || {
-         printf "\tx KO ($?)\n" >&2 \
+         printf " x KO - function '$_test' ($?)\n" >&2 \
           && _status=1
         }   
   done
+  rm -rf $tsh__TEST_DIR
   return $_status
 }

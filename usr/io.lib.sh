@@ -62,10 +62,11 @@ function.public io_is_IO_STDIN_REDIRECTED() {
 function.public io_existing_stdin() {
   #
   # Echoes the content of stdin only if not empty.
+  # Returns 1 if no stdin was found.
   #
   io_is_IO_STDIN_PIPE \
    || io_is_IO_STDIN_REDIRECTED \
-   || return 0
+   || return 1
   io_stdin
 }
 

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# FOlowing code is meant to copy paste in case of irregularity between library
+#  and scripts names
+set -euf -o pipefail
+cmd="cmd.*" 
+cmd_base="src/bash-utils/cmd.*.sh" # cmd.*.lib.sh
+
+## Repos
+repold="/home/alexn/local-usr"
+repnew="/mnt/storage/dev/slash"
+
+## Move commands
+mv ${repold}/${cmd_base} ${repnew}/usr/
+
+## Remove old command 
+cd $repold
+git rm ${cmd_base}
+
+## Remove bin
+git rm bin/${cmd}
+
+## Commit changes
+gcommit "[] Moved ${cmd} command to slash repo."
+
+## Link new command
+usr.export-tools ${repnew}/usr/${cmd}.*
+
+## Commit changes
+cd $repnew
+gadd usr/${cmd}
+gadd bin/${cmd}
+
+gcommit "Got cmd.* suite from LOCAL_USR repo."
+
+## Find binaries' dependencies
+function grep_sources() {
+  [ $# -gt 0 ] || return 1
+  local _exit=0
+  echo "Looking into: '$@'"
+  local _dirname _basename _absname
+  for _in in "$@"; do
+    _dirname=$(dirname "$_in")
+    for _bin in $(grep '^source ' "$@" | cut -d':' -f2  | sed 's/^source//g' | sort | uniq | sort); do
+      _basename=$(basename "$_bin")
+      _absname="${_dirname}/${_basename}"
+      ! [ -e "${_absname}" ] \
+       && _exit=1 \
+       && printf " x ${_absname}\n" \
+       || printf " v ${_absname}\n"
+    done
+  done
+  return $_exit
+}
