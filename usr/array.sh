@@ -181,3 +181,16 @@ function arrr_pop_name() {
   _index=${_indexes[$(( _nb_idx -1 ))]}
   arrr_pop "$_afrom" $_index                                    || return 5
 }
+
+function arrr_set() {
+  #
+  # Takes input elements and returns a set.
+  # A set here is still an array of unique element.
+  #
+  [ $# -gt 0 ]                                                  || return 0
+  local _set=()
+  for _e in "$@"; do
+    arrr_add_unique _set "$_e" 
+  done
+  pecho "${_set[@]}"
+}

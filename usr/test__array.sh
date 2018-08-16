@@ -166,3 +166,13 @@ test__arrr_pop_name() {
   [ ${#_c[@]} -eq 3 ]                                           || return 12
   _c=()
 } && tsh__add_func test__arrr_pop_name
+
+test__arrr_set() {
+  local _func="arrr_set"
+  [ "$($_func one two)" == "one two" ]                          || return 1
+  [ "$($_func one two one three)" == "one two three" ]          || return 2
+  [ "$($_func one two 1 one three ' one')" \
+      == "one two 1 three  one" ]                               || return 3
+  ! [ "$($_func one two 1 one three '  one')" \
+      == "one two 1 three  one" ]                               || return 4
+} && tsh__add_func test__arrr_set
