@@ -59,18 +59,18 @@ DECORATOR_LIMIT_REGEX="^\s*${DECORATOR_LIMIT}\s*$"
 
 #
 #  Because we need to read directly the template function declaration right
-# after the decorator due to the (ba)sh language, I am forced to use aliases here.
+# after the decorator due to the (bash) language, I am forced to use aliases here.
 #
-#  In order to successfully have the new functions' declarations at the currenti
+#  In order to successfully have the new functions' declarations at the current
 # scope, the 'function-declaring' them (defun) SHOULD NOT be piped. 
 #
-#  In order not to interprete variables in the template function 'funtemp',
-# aliases should not be double-quoted. Double-quoting 'funtemp' inside the alias
+#  In order not to interprete variables in the template function '$FUNTEMP',
+# aliases should not be double-quoted. Double-quoting '$FUNTEMP' inside the alias
 # is fine though.
 #
-alias stdin_or_readfun="io_existing_stdin || readfun"
-alias read_funtemp_stdin="funtemp=\$(io_existing_stdin)"
-alias read_funtemp_read="read -d '' funtemp <<'${DECORATOR_LIMIT}'"
+FUNTEMP=funtemp
+alias read_funtemp_stdin="${FUNTEMP}=\$(io_existing_stdin)"
+alias read_funtemp_read="read -d '' ${FUNTEMP} <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read || :'
 
 defun() {
@@ -146,7 +146,7 @@ is_func_declaration() {
 # ----------
 ## Reads stdin function that follows.
 # Decorates it with the given existing function names following the decorator.
-alias @decorate='read_funtemp && decorate "$funtemp"'
+alias @decorate='read_funtemp && decorate "${!FUNTEMP}"'
 
 function is_alias() {
   alias "$1" &> /dev/null 
