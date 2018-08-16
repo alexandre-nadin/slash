@@ -235,7 +235,6 @@ eol
     )" \
   )                                                             || return 9
 
-  #echo -e "\n# ------\n_decorated_declaration: \n""$_decorated_declaration"
   defun "$_decorated_declaration"                               || return 10
 
   ## Decorate recursively if some decorators left
