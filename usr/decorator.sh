@@ -4,6 +4,7 @@ source::unique logging.lib
 source::unique io.lib
 source::unique variable.lib
 source::unique array.sh
+source::unique grep.sh
 
 # --------------
 # Requirements
@@ -107,10 +108,13 @@ func_recipe() {
   #
   # Retrieves the recipe of the given function declaration.
   #
-  local _func_declaration="${1:-io_existing_stdin}"
-  is_func_declaration "$_func_declaration" \
-  && tail -n +2 <<< "$_func_declaration" \
-   | sed -r " 
+  local _func_body _func_declaration _decla_lineNb
+  _func_body="${1:-$(io_existing_stdin)}"
+  _func_declaration=$(func_declaration "$_func_body")           || return 1
+  _decla_lineNb=$(( $(grep__lineNumber "$_func_declaration" <<< "$_func_body") + 1))
+  tail -n +$_decla_lineNb \
+    <<< "$_func_body" \
+    | sed -r "
        ## Remove empty lines
        /^\s*$/d ;
        ## Remove function's closing block curly bracket if any
@@ -118,21 +122,50 @@ func_recipe() {
      "
 }
 
+func_declaration() {
+  #
+  # Loops over the function body until it finds a function declaration.
+  # If not returns 1.
+  # Ignores empty lines.
+  # 
+  local _func_body="${1:-$(io_existing_stdin)}"
+  while read _line; do
+    is_func_declaration "$_line" \
+     && pecho "$_line" \
+     && return 0 \
+     || continue
+  done <<< "$_func_body"
+  return 1
+}
+
 func_name() {
   #
-  # Retrieves the name of the given function declaration.
+  # Retrieves the name of the given function body.
   #
-  local _func_declaration="${1:-io_existing_stdin}"
-  is_func_declaration "$_func_declaration" \
-  && head -n 1 <<< "$_func_declaration" \
-   | sed -r "
-       ## Remove function keyword
-       s|^${FUNC_REGEX_KEYWORD}||g ;
-       ## Remove function's opening block curly bracket
-       s|${FUNC_REGEX_BLOC_OPEN}$||g ;
-       ## Remove function's parenthesis
-       s|${FUNC_REGEX_PARENTHESIS}$||g ;
-     "
+  local _func_declaration
+  _func_declaration=$(func_declaration "${1:-$(io_existing_stdin)}") \
+                                                                || return 1
+  sed -r "
+    ## Remove function keyword
+    s|^${FUNC_REGEX_KEYWORD}||g ;
+    ## Remove function's opening block curly bracket
+    s|${FUNC_REGEX_BLOC_OPEN}$||g ;
+    ## Remove function's parenthesis
+    s|${FUNC_REGEX_PARENTHESIS}$||g ;
+  " <<< "$_func_declaration"                                    || return 2
+  
+}
+
+func_get_decorators() {
+  :
+}
+
+func_get_name() {
+  :
+}
+
+func_get_type() {
+  :
 }
 
 is_func_declaration() {
@@ -176,6 +209,7 @@ decorate() {
   #
   ## Declare local variables
   local _vars=(\
+    _template
     _decorable_template
     _decorable_name
     _decorable_recipe 
@@ -191,7 +225,9 @@ decorate() {
   _decorable_name=$(func_name "$_decorable_template")           || return 2
   _decorable_recipe=$(func_recipe "$_decorable_template")       || return 3
   _decorated_name="$_decorable_name"
-  _decorator_names=("$@")
+
+  # For now we can apply a decorator only once
+  _decorator_names=($(arrr_set $@))
 
   ## If no decorator, don't declare anything and return error.
   [ ${#_decorator_names[@]} -gt 0 ]                             || return 4

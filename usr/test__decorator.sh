@@ -46,11 +46,49 @@ test__func_recipe() {
 Hello
 eol
 )" \
-    "echo 'Hello world2"
+    "echo 'Hello world2'"
    )                                                            || return 4
 
   # Test first line
-  ! $_func "$_test_func_declaration"                            || return 5  
+  _res=$($_func "$_test_func_declaration") \
+   && _ret=$? || _ret=$?
+  [ $_ret -eq 0 ]                                               || return 5  
+  [ "$_res" == "  echo 'Hello world2'" ]                        || return 6
+
+  # --
+  # Function with nonsense recipe: Should pass
+  _test_func_declaration=$(cat << eol
+function hello () {
+Hello wrld! This
+  echo is not a valid
+ fuction recipe but still passes the test
+*}()$&
+eol
+)
+  _res=$($_func "$_test_func_declaration") \
+   && _ret=$? || _ret=$?
+  [ $_ret -eq 0 ]                                               || return 7
+  [ "$_res" == "$(cat << eol
+Hello wrld! This
+  echo is not a valid
+ fuction recipe but still passes the test
+*}()$&
+eol
+                  )" ]                                          || return 8
+
+  # ----
+  # Bad function declaration with correct recipe: Shall not pass!!
+  _test_func_declaration=$(cat << eol
+function hello() {(*
+  echo "This recipe is super valid but not the declaration."
+}
+eol
+  )
+  _res=$($_func "$_test_func_declaration") \
+   && _ret=$? || _ret=$?
+  [ $_ret -ne 0 ]                                               || return 9
+  [ "$_res" == "" ]
+
   
 } && tsh__add_func test__func_recipe
 
@@ -71,7 +109,7 @@ test__func_name() {
 eol
           )
   _res=$($_func "$_f")
-  ! [ "$_res" == 'tre-_llo12' ]                                 || return 4
+  [ "$_res" == 'tre-_llo12' ]                                   || return 4
 
   _res=$($_func "$(sed '/^\s*$/d' <<< "$_f")")
   [ "$_res" == 'tre-_llo12' ]                                   || return 5
