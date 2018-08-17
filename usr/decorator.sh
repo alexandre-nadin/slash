@@ -49,8 +49,8 @@ test_requirements \
 # ----------
 ## Function's Regular Expressions
 FUNC_REGEX_KEYWORD='\s*(function){0,1}\s*'
-FUNC_REGEX_NAME='[^\s]*'
-FUNC_REGEX_PARENTHESIS='\s*\(\)\s*'
+FUNC_REGEX_NAME='\s*[^\s]*\s*'
+FUNC_REGEX_PARENTHESIS='\s*\(\s*\)\s*'
 FUNC_REGEX_BLOC_OPEN='\s*\{\s*'
 FUNC_REGEX_BLOC_CLOSE='^\s*\}\s*$'
 FUNC_REGEX_DECLARATION="^${FUNC_REGEX_KEYWORD}${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}${FUNC_REGEX_BLOC_OPEN}$"
@@ -73,39 +73,6 @@ FUNTEMP=funtemp
 alias read_funtemp_stdin="${FUNTEMP}=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' ${FUNTEMP} <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read || :'
-
-# ----------------------
-# Function definitions
-# ----------------------
-defun() {
-  #
-  # Takes a function declaration in input and declares it.
-  #
-  local _fun_declaration=${1:-$(io_existing_stdin)}
-  is_func_declaration "$_fun_declaration"                       || return 1
-  eval "$_fun_declaration"                                      || return 2 
-}
-
-defun_name_recipe() {
-  #
-  # Declares a function from a name and a recipe given as input.
-  #
-  local _fun_new=$(build_name_recipe_declaration "$@")          || return 1
-  defun "$_fun_new"                                             || return 2
-}
-
-build_name_recipe_declaration() {
-  #
-  # Takes a function name and its recipe.
-  # Outputs the function's declaration string.
-  #
-  [ $# -eq 2 ]                                                  || return 1
-  cat << eol 
-${1}() {
-  ${2}
-}
-eol
-}
 
 # ------------------
 # Function parsers
@@ -172,6 +139,40 @@ func_get_decorators() {
 
 func_type() {
   :
+}
+
+
+# ----------------------
+# Function definitions
+# ----------------------
+defun() {
+  #
+  # Takes a function declaration in input and declares it.
+  #
+  local _fun_declaration=${1:-$(io_existing_stdin)}
+  is_func_declaration "$_fun_declaration"                       || return 1
+  eval "$_fun_declaration"                                      || return 2 
+}
+
+defun_name_recipe() {
+  #
+  # Declares a function from a name and a recipe given as input.
+  #
+  local _fun_new=$(build_name_recipe_declaration "$@")          || return 1
+  defun "$_fun_new"                                             || return 2
+}
+
+build_name_recipe_declaration() {
+  #
+  # Takes a function name and its recipe.
+  # Outputs the function's declaration string.
+  #
+  [ $# -eq 2 ]                                                  || return 1
+  cat << eol 
+${1}() {
+  ${2}
+}
+eol
 }
 
 
