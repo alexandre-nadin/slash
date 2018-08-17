@@ -74,6 +74,9 @@ alias read_funtemp_stdin="${FUNTEMP}=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' ${FUNTEMP} <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read || :'
 
+# ----------------------
+# Function definitions
+# ----------------------
 defun() {
   #
   # Takes a function declaration in input and declares it.
@@ -104,22 +107,12 @@ ${1}() {
 eol
 }
 
-func_recipe() {
-  #
-  # Retrieves the recipe of the given function declaration.
-  #
-  local _func_body _func_declaration _decla_lineNb
-  _func_body="${1:-$(io_existing_stdin)}"
-  _func_declaration=$(func_declaration "$_func_body")           || return 1
-  _decla_lineNb=$(( $(grep__lineNumber "$_func_declaration" <<< "$_func_body") + 1))
-  tail -n +$_decla_lineNb \
-    <<< "$_func_body" \
-    | sed -r "
-       ## Remove empty lines
-       /^\s*$/d ;
-       ## Remove function's closing block curly bracket if any
-       $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
-     "
+# ------------------
+# Function parsers
+# ------------------
+is_func_declaration() {
+  head -n 1 <<< "$1" \
+   | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
 }
 
 func_declaration() {
@@ -153,24 +146,32 @@ func_name() {
     ## Remove function's parenthesis
     s|${FUNC_REGEX_PARENTHESIS}$||g ;
   " <<< "$_func_declaration"                                    || return 2
-  
+}
+
+func_recipe() {
+  #
+  # Retrieves the recipe of the given function declaration.
+  #
+  local _func_body _func_declaration _decla_lineNb
+  _func_body="${1:-$(io_existing_stdin)}"
+  _func_declaration=$(func_declaration "$_func_body")           || return 1
+  _decla_lineNb=$(( $(grep__lineNumber "$_func_declaration" <<< "$_func_body") + 1))
+  tail -n +$_decla_lineNb \
+    <<< "$_func_body" \
+    | sed -r "
+       ## Remove empty lines
+       /^\s*$/d ;
+       ## Remove function's closing block curly bracket if any
+       $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
+     "
 }
 
 func_get_decorators() {
   :
 }
 
-func_get_name() {
+func_type() {
   :
-}
-
-func_get_type() {
-  :
-}
-
-is_func_declaration() {
-  head -n 1 <<< "$1" \
-   | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
 }
 
 
@@ -209,7 +210,6 @@ decorate() {
   #
   ## Declare local variables
   local _vars=(\
-    _template
     _decorable_template
     _decorable_name
     _decorable_recipe 
