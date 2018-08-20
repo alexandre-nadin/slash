@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 source source.sh
 source::unique logging.lib
 source::unique io.lib
@@ -6,6 +6,7 @@ source::unique variable.lib
 source::unique array.sh
 source::unique grep.sh
 
+set -o pipefail
 # --------------
 # Requirements
 # --------------
@@ -92,7 +93,7 @@ func_declaration() {
   while read _line; do
     is_func_declaration "$_line" \
      && pecho "$_line" \
-     && return 0 \
+                                                                && return 0 \
      || continue
   done <<< "$_func_body"
   return 1
@@ -122,8 +123,8 @@ func_recipe() {
   local _func_body _func_declaration _decla_lineNb
   _func_body="${1:-$(io_existing_stdin)}"
   _func_declaration=$(func_declaration "$_func_body")           || return 1
-  _decla_lineNb=$(( $(grep__lineNumber "$_func_declaration" <<< "$_func_body") + 1))
-  tail -n +$_decla_lineNb \
+  _decla_lineNb=$(grep__lineNumber "$_func_declaration" <<< "$_func_body")
+  tail -n +$(( $_decla_lineNb + 1 )) \
     <<< "$_func_body" \
     | sed -r "
        ## Remove empty lines
@@ -133,12 +134,38 @@ func_recipe() {
      "
 }
 
-func_get_decorators() {
-  :
+FUNC_REGEX_DECORATOR_KW='^\s*@[^[:space:]]*\s*'
+FUNC_REGEX_DECORATOR_DECLA="${FUNC_REGEX_DECORATOR_KW}[\s*[^\s]*\s*]*"
+is_decorator_declaration() {
+  head -n 1 <<< "$1" \
+   | sgrep "$FUNC_REGEX_DECORATOR_DECLA"     \
+   | sed -r "s/${FUNC_REGEX_DECORATOR_KW}//"
 }
 
-func_type() {
-  :
+func_decorators() {
+  local _body _decla _declaLineNb=0
+  _body=$(sed -r "/^\s*$/d" \
+           <<< "${1:-$(io_existing_stdin)}"
+         )
+  _decla=$(func_declaration "$_body")                           || return 1
+  _declaLineNb=$(grep__lineNumber "$_decla" <<< "$_body")
+  while read _line; do
+    _lnb=$(( _lnb + 1 ))     
+    is_decorator_declaration "$_line" \
+     || { 
+          printf "Error: Function decorator at line $_declaLineNb: '$_line.'\n" \
+            >&2                                                 && return 2
+        }
+  done < <(head -n $(( _declaLineNb - 1 )) <<< "$_body")
+}
+
+func_keyword() {
+  local _func_body _func_declaration 
+  _func_body="${1:-$(io_existing_stdin)}"
+  _func_declaration=$(func_declaration "$_func_body")           || return 1
+  sogrep "$FUNC_REGEX_KEYWORD" <<< "$_func_declaration" \
+   | sed -r "/^\s*$/d"   \
+   | str.strip                                                  || return 0
 }
 
 

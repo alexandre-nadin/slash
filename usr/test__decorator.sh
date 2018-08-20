@@ -43,7 +43,7 @@ test__func_declaration() {
   [ $_ret -eq 0 ]                                               || return 1
   [ "$_res" == "function hello() {" ]                           || return 2
 
-  ## Correct declaration without type 
+  ## Correct declaration without keyword
   _res=$( $_func "$(cat << '  eol'
 
      hello  (  ) { 
@@ -168,6 +168,135 @@ eol
   [ $_ret -ne 0 ]                                               || return 9
   [ "$_res" == "" ]
 } && tsh__add_func test__func_recipe
+
+test__is_decorator_declaration() {
+  local _func="is_decorator_declaration" _res _ret
+  ## 
+  _res=$( $_func "$(cat << '   eol'
+     whatever
+     @decorator
+   eol
+        )"
+   ) && _ret=$? || _ret=$?
+   [ $_ret -ne 0 ]                                              || return 1
+   [ "$_res" == "" ]                                            || return 2
+  
+  ##
+  _res=$( $_func "$(cat << '   eol'
+    
+     @decorator
+   eol
+        )"
+   ) && _ret=$? || _ret=$?
+   [ $_ret -ne 0 ]                                              || return 3
+   [ "$_res" == "" ]                                            || return 4
+
+  ##
+  _res=$( $_func "$(cat << '   eol'
+     @decorator
+   eol
+        )"
+   ) && _ret=$? || _ret=$?
+   [ $_ret -eq 0 ]                                              || return 5
+   [ "$_res" == "" ]                                            || return 6
+
+  ##
+  _res=$( $_func "$(cat << '   eol'
+     @decorator one two \
+       three
+       @anotherDecorator four five
+   eol
+        )" | xargs
+   ) && _ret=$? || _ret=$?
+   [ $_ret -eq 0 ]                                              || return 7
+   [ "$_res" == "one two three" ]                               || return 8
+} && tsh__add_func test__is_decorator_declaration
+
+test__func_decorators() {
+  local _func="func_decorators"
+
+  ## No function declaration
+  _res=$( $_func "$(cat << '   eol'
+       
+       @anotherDecorator one two
+   eol
+        )" | xargs
+   ) && _ret=$? || _ret=$?
+   [ $_ret -ne 0 ]                                              || return 1
+   [ "$_res" == "" ]                                            || return 2
+
+  ## Wrong decorator
+  _res=$( $_func "$(cat << '   eol'
+      
+       wrongDecorator one two 
+       @anotherDecorator three four
+      function myfunc() {
+
+      }
+   eol
+        )" | xargs
+   ) && _ret=$? || _ret=$?
+   [ $_ret -ne 0 ]                                              || return 3
+   [ "$_res" == "" ]                                            || return 4
+
+  ## Correct decorator and function declaration
+  _res=$( $_func "$(cat << '   eol'
+      
+       @correctDecorator one two 
+
+       @anotherDecorator three four \
+         five    six
+      function myfunc() {
+        Whatever
+      }
+   eol
+        )" | xargs
+   ) && _ret=$? || _ret=$?
+   [ $_ret -eq 0 ]                                              || return 5
+   [ "$_res" == "one two three four five six" ]                               || return 6
+
+} && tsh__add_func test__func_decorators
+
+test__func_keyword() {
+  local _func="func_keyword"
+
+  ## Wrong function keyword
+  _res=$( $_func "$(cat << '   eol'
+    @decorator one two
+    myfunction mfunc() {
+      whatever
+    }
+   eol
+        )"
+  ) && _ret=$? || _ret=$?
+  [ $_ret -ne 0 ]                                               || return 1
+  [ "$_res" == "" ]                                             || return 2
+
+  ## Correct function keyword
+  _res=$( $_func "$(cat << '   eol'
+    @decorator one two
+    function mfunc() {
+      whatever
+    }
+   eol
+        )"
+  ) && _ret=$? || _ret=$?
+  [ $_ret -eq 0 ]                                               || return 3
+  [ "$_res" == "function" ]                                     || return 4
+
+  ## No function keyword
+  _res=$( $_func "$(cat << '   eol'
+    @decorator one two
+    mfunc() {
+      whatever
+    }
+   eol
+        )"
+  ) && _ret=$? || _ret=$?
+  [ $_ret -eq 0 ]                                               || return 5
+  [ "$_res" == "" ]                                             || return 6
+
+} && tsh__add_func test__func_keyword
 
 test__build_name_recipe_declaration() {
   local _func="build_name_recipe_declaration" _test_string
