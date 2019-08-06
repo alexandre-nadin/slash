@@ -83,8 +83,8 @@ test__is_func_declaration() {
   # SPECIFICATIONS 
   #  Function declaration should be on the first line.
   #  Initial keyword 'function' is optional.
-  #  Function name contains all but whitespaces
-  #  Function parenthesis are mandatory
+  #  Function name can contains all but whitespaces.
+  #  Function parenthesis are mandatory.
   #  Function declaration ends with a curly bracket.
   #
   local _func="is_func_declaration"
