@@ -1,10 +1,12 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 source source.sh
 source::unique logging.lib
 source::unique io.lib
 source::unique variable.lib
 source::unique array.sh
+source::unique grep.sh
 
+set -o pipefail
 # --------------
 # Requirements
 # --------------
@@ -48,8 +50,8 @@ test_requirements \
 # ----------
 ## Function's Regular Expressions
 FUNC_REGEX_KEYWORD='\s*(function){0,1}\s*'
-FUNC_REGEX_NAME='[^\s]*'
-FUNC_REGEX_PARENTHESIS='\s*\(\)\s*'
+FUNC_REGEX_NAME='\s*[^\s]*\s*'
+FUNC_REGEX_PARENTHESIS='\s*\(\s*\)\s*'
 FUNC_REGEX_BLOC_OPEN='\s*\{\s*'
 FUNC_REGEX_BLOC_CLOSE='^\s*\}\s*$'
 FUNC_REGEX_DECLARATION="^${FUNC_REGEX_KEYWORD}${FUNC_REGEX_NAME}${FUNC_REGEX_PARENTHESIS}${FUNC_REGEX_BLOC_OPEN}$"
@@ -73,6 +75,103 @@ alias read_funtemp_stdin="${FUNTEMP}=\$(io_existing_stdin)"
 alias read_funtemp_read="read -d '' ${FUNTEMP} <<'${DECORATOR_LIMIT}'"
 alias read_funtemp='read_funtemp_stdin || read_funtemp_read || :'
 
+# ------------------
+# Function parsers
+# ------------------
+is_func_declaration() {
+  head -n 1 <<< "$1" \
+   | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
+}
+
+func_declaration() {
+  #
+  # Loops over the function body until it finds a function declaration.
+  # If not returns 1.
+  # Ignores empty lines.
+  # 
+  local _func_body="${1:-$(io_existing_stdin)}"
+  while read _line; do
+    is_func_declaration "$_line" \
+     && pecho "$_line" \
+                                                                && return 0 \
+     || continue
+  done <<< "$_func_body"
+  return 1
+}
+
+func_name() {
+  #
+  # Retrieves the name of the given function body.
+  #
+  local _func_declaration
+  _func_declaration=$(func_declaration "${1:-$(io_existing_stdin)}") \
+                                                                || return 1
+  sed -r "
+    ## Remove function keyword
+    s|^${FUNC_REGEX_KEYWORD}||g ;
+    ## Remove function's opening block curly bracket
+    s|${FUNC_REGEX_BLOC_OPEN}$||g ;
+    ## Remove function's parenthesis
+    s|${FUNC_REGEX_PARENTHESIS}$||g ;
+  " <<< "$_func_declaration"                                    || return 2
+}
+
+func_recipe() {
+  #
+  # Retrieves the recipe of the given function declaration.
+  #
+  local _func_body _func_declaration _decla_lineNb
+  _func_body="${1:-$(io_existing_stdin)}"
+  _func_declaration=$(func_declaration "$_func_body")           || return 1
+  _decla_lineNb=$(grep__lineNumber "$_func_declaration" <<< "$_func_body")
+  tail -n +$(( $_decla_lineNb + 1 )) \
+    <<< "$_func_body" \
+    | sed -r "
+       ## Remove empty lines
+       /^\s*$/d ;
+       ## Remove function's closing block curly bracket if any
+       $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
+     "
+}
+
+FUNC_REGEX_DECORATOR_KW='^\s*@[^[:space:]]*\s*'
+FUNC_REGEX_DECORATOR_DECLA="${FUNC_REGEX_DECORATOR_KW}[\s*[^\s]*\s*]*"
+is_decorator_declaration() {
+  head -n 1 <<< "$1" \
+   | sgrep "$FUNC_REGEX_DECORATOR_DECLA"     \
+   | sed -r "s/${FUNC_REGEX_DECORATOR_KW}//"
+}
+
+func_decorators() {
+  local _body _decla _declaLineNb=0
+  _body=$(sed -r "/^\s*$/d" \
+           <<< "${1:-$(io_existing_stdin)}"
+         )
+  _decla=$(func_declaration "$_body")                           || return 1
+  _declaLineNb=$(grep__lineNumber "$_decla" <<< "$_body")
+  while read _line; do
+    _lnb=$(( _lnb + 1 ))     
+    is_decorator_declaration "$_line" \
+     || { 
+          printf "Error: Function decorator at line $_declaLineNb: '$_line.'\n" \
+            >&2                                                 && return 2
+        }
+  done < <(head -n $(( _declaLineNb - 1 )) <<< "$_body")
+}
+
+func_keyword() {
+  local _func_body _func_declaration 
+  _func_body="${1:-$(io_existing_stdin)}"
+  _func_declaration=$(func_declaration "$_func_body")           || return 1
+  sogrep "$FUNC_REGEX_KEYWORD" <<< "$_func_declaration" \
+   | sed -r "/^\s*$/d"   \
+   | str.strip                                                  || return 0
+}
+
+
+# ----------------------
+# Function definitions
+# ----------------------
 defun() {
   #
   # Takes a function declaration in input and declares it.
@@ -101,43 +200,6 @@ ${1}() {
   ${2}
 }
 eol
-}
-
-func_recipe() {
-  #
-  # Retrieves the recipe of the given function declaration.
-  #
-  local _func_declaration="${1:-io_existing_stdin}"
-  is_func_declaration "$_func_declaration" \
-  && tail -n +2 <<< "$_func_declaration" \
-   | sed -r " 
-       ## Remove empty lines
-       /^\s*$/d ;
-       ## Remove function's closing block curly bracket if any
-       $ s|${FUNC_REGEX_BLOC_CLOSE}||g ;
-     "
-}
-
-func_name() {
-  #
-  # Retrieves the name of the given function declaration.
-  #
-  local _func_declaration="${1:-io_existing_stdin}"
-  is_func_declaration "$_func_declaration" \
-  && head -n 1 <<< "$_func_declaration" \
-   | sed -r "
-       ## Remove function keyword
-       s|^${FUNC_REGEX_KEYWORD}||g ;
-       ## Remove function's opening block curly bracket
-       s|${FUNC_REGEX_BLOC_OPEN}$||g ;
-       ## Remove function's parenthesis
-       s|${FUNC_REGEX_PARENTHESIS}$||g ;
-     "
-}
-
-is_func_declaration() {
-  head -n 1 <<< "$1" \
-   | sogrep "${FUNC_REGEX_DECLARATION}" &> /dev/null
 }
 
 
@@ -191,7 +253,9 @@ decorate() {
   _decorable_name=$(func_name "$_decorable_template")           || return 2
   _decorable_recipe=$(func_recipe "$_decorable_template")       || return 3
   _decorated_name="$_decorable_name"
-  _decorator_names=("$@")
+
+  # For now we can apply a decorator only once
+  _decorator_names=($(arrr_set $@))
 
   ## If no decorator, don't declare anything and return error.
   [ ${#_decorator_names[@]} -gt 0 ]                             || return 4
