@@ -10,16 +10,16 @@ Amen. Yes. Well. You see. I tend to avoid generalities. I'd rather say: do not d
 Shells are fun. Bash is fun. Bash learning curve has seemed pretty logarithmic to me: 
   - Novice level is reached in no time. 
   - Advanced level in time.
-  - Expert level takes way more time. 
+  - Expert level takes way more time. I might be reaching it.
   - Guru level, well I couldn't tell.
 
 Slash is an attempt to add cool features to Bash while broadening my knowledge on the shell.
 
 Development is still at an early stage, no clear specs have been defined, they come when I feel 
-features might be interesting to add to Bash, or simply fun.
+features might be interesting to be added to Bash, or simply fun.
 
-Once in a while, I stop what I'm shelling and I think: "Mmm, right now I would love to be able to 
-do this and that, with bash." Sometimes simply choosing to use another language is more relevant. 
+Once in a while, I stop what I'm shelling about and I think: "Mmm, right now I would love to be able to 
+do this and that, with bash". Sometimes simply choosing to use another language is more relevant. 
 Maybe Korn shell does it, Yes. Surely I could also write my own shell in C. Certainly. 
 
 But. What if. What if those features were implemented in Bash?
