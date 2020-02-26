@@ -47,7 +47,7 @@ tsh__test_funcs() {
   mkdir -p $tsh__TEST_DIR
   local _status=0
   for _test in "${tsh__funcs[@]}"; do
-    $_test \
+    $_test &> /dev/null \
      && printf " v OK - function '$_test'\n" >&2 \
      || {
          printf " x KO - function '$_test' ($?)\n" >&2 \
