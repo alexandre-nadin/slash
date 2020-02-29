@@ -10,7 +10,7 @@
 #        dothis;
 #        dothat;
 #        true                                                   || return 1
-#      } && tsh__add_func my_function_test
+#      } && tsh::addFunc my_function_test
 #      # ...
 #
 # Then test all the functions:
@@ -18,16 +18,21 @@
 #      tsh__test_funcs
 #
 ########################################
-source source.sh
-source::unique decorator.sh
-
 tsh__TEST_DIR="./.testslh"
 tsh__TEST_FILE_PREXIX="test__"
+tsh__DIR_MODS=$(readlink -f $(dirname ${BASH_SOURCE[0]}))/../src
+tsh__MODS=($(ls -d ${tsh__DIR_MODS}/tests/*))
+
+tsh::listTests() {
+  ls -d ${tsh__DIR_MODS}/tests/*
+}
 
 ## Array of functions to test
-tsh__funcs=()
+tsh::resetFuncs() {
+  tsh__funcs=()
+} && tsh::resetFuncs
 
-tsh__add_func() {
+tsh::addFunc() {
   #
   # Adds a function name to execute for the testing framework.
   #
@@ -35,25 +40,57 @@ tsh__add_func() {
    || tsh__funcs+=("$1")
 }
 
-tsh__has_tests() {
-  [ ${#tsh__funcs[@]} -gt 0 ]
+tsh::testModules() {
+  for mod in $(tsh::listTests); do
+    source "$mod"
+    printf "\n[$(basename $mod)]\n"
+    tsh::testFuncs 
+  done
 }
 
-tsh__test_funcs() {
+tsh::testFuncs() {
   #
   # Launches all the registered testing functions.
   #
   set +u
   mkdir -p $tsh__TEST_DIR
-  local _status=0
-  for _test in "${tsh__funcs[@]}"; do
-    $_test &> /dev/null \
-     && printf " v OK - function '$_test'\n" >&2 \
-     || {
-         printf " x KO - function '$_test' ($?)\n" >&2 \
-          && _status=1
-        }   
+  local ret=0 
+  for func in "${tsh__funcs[@]}"; do
+    local funcStatus="" msgStatus=() msg=""
+    $func
+    funcStatus=$?
+    if [ $funcStatus -eq 0 ]; then
+      msg+=" v OK"
+    else
+      msg+=" x KO"
+      ret=1
+    fi
+    
+    msg+=" - function '$func'"
+    msg+=" - stats ${msgStatus[@]}"
+    msg+=" - returned $funcStatus"
+    printf "$msg\n" >&2 
   done
-  rm -rf $tsh__TEST_DIR
-  return $_status
+  #rm -rf $tsh__TEST_DIR
+  return $ret
+}
+
+tsh::expectStatus() {
+  #
+  # Sets the variable msgStatus that is used as extra information in 
+  # tsh::testFuncs(). The parameter to give is a string of the form 
+  #   NoCommand:ExectedStatus. 
+  # If I am exectuting the third command and I expect an exit status
+  # of 7, the parameter 3:7 should be passed. Example:
+  #
+  #   test__myfunction()
+  #     command1
+  #     command2
+  #     command3; tsh::expectStatus 3:7 
+  #     return ret
+  #   } && tsh::addFunc test__myfunction
+  #
+  local status=$? task expected
+  IFS=':' read -r task expected <<< "$1"
+  msgStatus+=("$task:$expected:$status")
 }
