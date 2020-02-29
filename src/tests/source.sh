@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 source source.sh
+source testslh.sh
 
 test__source::cleanSource() {
   local _func="source::cleanSource" _ret _f1
@@ -29,13 +30,13 @@ eol
 } && tsh__add_func test__source::cleanSource
 
 test__source::isFileSourced() {
-  local _func="unique_source" _ret _f{1..3}
+  local _func="source::uniqueStrict" _ret _f{1..3}
   _f1=${tsh__TEST_DIR}/test__source_source::isFileSourced_1.sh
   _f2=${tsh__TEST_DIR}/test__source_source::isFileSourced_2.sh
   _f3=${tsh__TEST_DIR}/test__source_source::isFileSourced_3.sh
 
   ## Test if self sourced? 
-  source::isFileSourced                                         || return 1
+  source::isFileSourced                     ; tsh::expectStatus 1:0
 
   ## Test if executed or sourced
   cat << 'eol' > $_f1
@@ -70,73 +71,76 @@ eol
   )                                                             || return $?
 } && tsh__add_func test__source::isFileSourced
 
-test__reset_unique_source_files() {
-  local _func="reset_unique_source_files" _ret
+test__source::resetSources() {
+  local _func="source::resetSources" _ret
   ! $_func one two                                              || return 1
   $_func                                                        || return 2
-  [ "${#src__sourced_files[@]}" -eq 1 ]                         || return 3
-  src__sourced_files=(one two three)                            || return 4
-  [ "${#src__sourced_files[@]}" -eq 3 ]                         || return 5
+  [ "${#src__sourcedFiles[@]}" -eq 1 ]                          || return 3
+  src__sourcedFiles=(one two three)                             || return 4
+  [ "${#src__sourcedFiles[@]}" -eq 3 ]                          || return 5
   $_func                                                        || return 6
   $_func                                                        || return 7
-  [ "${#src__sourced_files[@]}" -eq 1 ]                         || return 8
-} && tsh__add_func test__reset_unique_source_files
+  [ "${#src__sourcedFiles[@]}" -eq 1 ]                          || return 8
+} && tsh__add_func test__source::resetSources
 
-test__source::hasSourcedFiles() {
-  local _func="source::hasSourcedFiles" _ret
-  reset_unique_source_files                                     || return 1
-  $_func one                                                    || return 2
-  $_func                                                        || return 3 
-
-} && tsh__add_func test__source::hasSourcedFiles
+test__source::addSource() {
+  local _func="source::addSource" _ret
+  $_func; [ $? -eq 1 ]  || return 1
+  $_func "testslh.sh"; [ $? -eq 0 ] || return 2
+  $_func "testslh.sh"; [ ${#src__sourcedFiles[@]} -eq 3 ] || return 3
+   
+} && tsh__add_func test__source::addSource
 
 test__source::containsSource() {
   local _func="source::containsSource" _ret
-  reset_unique_source_files                                     || return 1
-  ! $_func                                                      || return 2
-  $_func "source.sh"                                            || return 3
-  src__sourced_files=()
-  ! $_func                                                      || return 4
+  source::resetSources                                          || return 1
+  $_func                                         ; [ $? -eq 1 ] || return 2
+  $_func "source.sh"                            ; [ $? -eq 0 ] || return 3
+  $_func "testslh.sh"                            ; [ $? -eq 2 ] || return 4
+  source::addSource "testslh.sh"                                || return 5
+  $_func "testslh.sh"                            ; [ $? -eq 0 ] || return 6
+  src__sourcedFiles=()
+  $_func "testslh.sh"                            ; [ $? -eq 2 ] || return 7
 } && tsh__add_func test__source::containsSource
 
 test__source::addSourceUnique() {
   local _func="source::addSourceUnique" _ret
-  reset_unique_source_files                                     || return 1
-  ! $_func                                                      || return 2
-  $_func first                                                  || return 3
+  source::resetSources                                          || return 1
+  $_func                    ; [ $? -eq 1 ] || return 2
+  $_func first  ; [ $? -eq 0 ] || return 3
   $_func second                                                 || return 4
   $_func " first"                                               || return 5
-  ! $_func "first"                                              || return 6
-  [ "$(echo "${src__sourced_files[@]}")" \
+  $_func "first"   ; [ $? -eq 2 ] ||  return 6
+  [ "$(echo "${src__sourcedFiles[@]}")" \
       == "source.sh first second  first" ]                      || return 7
 } && tsh__add_func test__source::addSourceUnique
 
 test__source::removeSourceUnique() {
   local _func="source::removeSourceUnique" _ret
-  reset_unique_source_files                                     || return 1
+  source::resetSources                                          || return 1
   ! $_func                                                      || return 2
-  [ ${#src__sourced_files[@]} -eq 1 ]                           || return 3
+  [ ${#src__sourcedFiles[@]} -eq 1 ]                            || return 3
   ! $_func first                                                || return 4
   ! $_func second                                               || return 5
   source::addSourceUnique "first"                               || return 6
   source::addSourceUnique "second"                              || return 7
   source::addSourceUnique " first"                              || return 8
-  [ ${#src__sourced_files[@]} -eq 4 ]                           || return 9
+  [ ${#src__sourcedFiles[@]} -eq 4 ]                            || return 9
   ! $_func "  first"                                            || return 10
   $_func " first"                                               || return 11
   $_func "first"                                                || return 12
-  [ ${#src__sourced_files[@]} -eq 2  ]                          || return 13
+  [ ${#src__sourcedFiles[@]} -eq 2  ]                           || return 13
   source::addSourceUnique "first"                               || return 14
 } && tsh__add_func test__source::removeSourceUnique
 
-test__unique_source() {
+test__source::uniqueStrict() {
   # The file to source should:
   #  - not be registered
   #  - exist
   #  - be soured without error
   #  - registered
-  local _func="unique_source" _ret
-  reset_unique_source_files                                     || return 1
+  local _func="source::uniqueStrict" _ret
+  source::resetSources                                          || return 1
   # -------------
   # Basic tests
   # -------------
@@ -146,16 +150,16 @@ test__unique_source() {
   ! $_func logging.lib                                          || return 4
   $_func array.sh                                               || return 5
   ! $_func array.sh                                             || return 6
-  [ ${#src__sourced_files[@]} -eq 3 ]                           || return 7
+  [ ${#src__sourcedFiles[@]} -eq 3 ]                            || return 7
  
   ! $_func " logging.lib"                                       || return 8
-  [ ${#src__sourced_files[@]} -eq 3 ]                           || return 9
+  [ ${#src__sourcedFiles[@]} -eq 3 ]                            || return 9
 
   ! $_func "loggi" &> /dev/null                                 || return 10
   ! source::containsSource "loggi"                              || return 11
-  ! [ "$(echo "${src__sourced_files[@]}")"  == " logging.lib array.sh" ]     \
+  ! [ "$(echo "${src__sourcedFiles[@]}")"  == " logging.lib array.sh" ]     \
                                                                 || return 12
-  [ "$(echo "${src__sourced_files[@]}")" \
+  [ "$(echo "${src__sourcedFiles[@]}")" \
      == "source.sh logging.lib array.sh" ] \
                                                                 || return 13
 
@@ -164,11 +168,11 @@ test__unique_source() {
   # --------------
   ## Testing script files
   local _f{1..4}
-  _f0="${tsh__TEST_DIR}/test_unique_source_0.sh"
-  _f1="${tsh__TEST_DIR}/test_unique_source_1.sh"
-  _f2="${tsh__TEST_DIR}/test_unique_source_2.sh"
-  _f3="${tsh__TEST_DIR}/test_unique_source_3.sh"
-  _f4="${tsh__TEST_DIR}/test_unique_source_4.sh"
+  _f0="${tsh__TEST_DIR}/test_source::uniqueStrict_0.sh"
+  _f1="${tsh__TEST_DIR}/test_source::uniqueStrict_1.sh"
+  _f2="${tsh__TEST_DIR}/test_source::uniqueStrict_2.sh"
+  _f3="${tsh__TEST_DIR}/test_source::uniqueStrict_3.sh"
+  _f4="${tsh__TEST_DIR}/test_source::uniqueStrict_4.sh"
 
   ## Empty file
   cat << 'eol' > $_f0
@@ -235,10 +239,10 @@ source source.sj                                                || retexit 26
 
 echo "[add F3]"
 source::unique $_f3                                             || retexit 27
-echo "src__sourced_files: \${src__sourced_files[@]}"
+echo "src__sourcedFiles: \${src__sourcedFiles[@]}"
 [ \$SOURCED_VAR -eq 2 ]                                         || retexit 28
 
-echo "src__sourced_files: \${src__sourced_files[@]}"
+echo "src__sourcedFiles: \${src__sourcedFiles[@]}"
 retexit 77
 source::unique $_f3 && _ret=\$? || _ret=\$?
 echo "_ret: \$_ret; SOURCED_VAR: \$SOURCED_VAR"
@@ -258,4 +262,4 @@ source::unique $_f0                                             || retexit 37
 eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
-} && tsh__add_func test__unique_source
+} && tsh__add_func test__source::uniqueStrict

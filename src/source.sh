@@ -1,42 +1,25 @@
 #!/usr/bin/env bash
 
-# ----------------------------------------------------------------------------
-# Self Sourcing. 
-#
-# My choice is that this library cannot be sourced more than
-# once in the same process.
-# ----------------------------------------------------------------------------
-src__SOURCED=${src__SOURCED:-false}
-if $src__SOURCED; then 
-  return 0
-else 
-  src__SOURCED=true
-fi
-
 # --------------------------
 # Unique sourcing of files
 # --------------------------
 function source::resetSources() {
   #
   # Resets the array of unique sourced files.
+  # Set this module by default.
   #
   [ $# -eq 0 ]                                                  || return 1
   src__sourcedFiles=("$(basename ${BASH_SOURCE[0]})")           || return 2
 } && source::resetSources
 
-source::hasSourcedFiles() {
-  [ ${#src__sourcedFiles[@]} -eq 0 ]
+source::addSource() {
+  [ $# -eq 1 ]                                                  || return 1
+  src__sourcedFiles+=("$1")
 }
 
 source::containsSource() {
   [ $# -eq 1 ]                                                  || return 1
-  source::hasSourcedFiles                                       || return 2
-  grep -q -s " $1 " <<< " ${src__sourcedFiles[@]} "             || return 3
-}
-
-source::addSource() {
-  [ $# -eq 1 ]                                                  || return 1
-  src__sourcedFiles+=("$1")
+  grep -q -s " $1 " <<< " ${src__sourcedFiles[@]} "             || return 2
 }
 
 source::addSourceUnique() {
@@ -45,8 +28,8 @@ source::addSourceUnique() {
   # exist.
   #
   [ $# -eq 1 ]                                                  || return 1
-  ! source::containsSource "$1" \
-   && source::addSource "$1"                                    || return 2
+  ! source::containsSource "$1"                                 || return 2
+   source::addSource "$1"                                       || return 3
 }
 
 source::removeSourceUnique() {
@@ -54,13 +37,12 @@ source::removeSourceUnique() {
   # Removes the given string from the list of tracked files if it exists.
   #
   [ $# -eq 1 ]                                                  || return 1
-  source::hasSourcedFiles                                       || return 2
-  source::containsSource "$1"                                   || return 3
+  source::containsSource "$1"                                   || return 2
   local _tmpArr
   for _src in "${src__sourcedFiles[@]}"; do
     [ "$_src" == "$1" ] || _tmpArr+=("$_src") 
   done 
-  src__sourcedFiles=($(echo "${_tmpArr[@]}"))                   || return 4
+  src__sourcedFiles=($(echo "${_tmpArr[@]}"))                   || return 3
 
 }
 
