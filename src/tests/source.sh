@@ -199,16 +199,16 @@ eol
   cat << eol > $_f2
 #!/usr/bin/env bash
 source script.sh
-source $_f1                                                     || retexit 14
-source $_f1                                                     || retexit 15
-[ \$SOURCED_VAR -eq 2 ]                                         || retexit 16
+source $_f1                                                     || script::returnOrExit 14
+source $_f1                                                     || script::returnOrExit 15
+[ \$SOURCED_VAR -eq 2 ]                                         || script::returnOrExit 16
  
 source source.sh
-source::unique $_f1                                             || retexit 17
-[ \$SOURCED_VAR -eq 3 ]                                         || retexit 18
+source::unique $_f1                                             || script::returnOrExit 17
+[ \$SOURCED_VAR -eq 3 ]                                         || script::returnOrExit 18
 
-! source::unique $_f1                                           || retexit 19
-[ \$SOURCED_VAR -eq 3 ]                                         || retexit 20
+! source::unique $_f1                                           || script::returnOrExit 19
+[ \$SOURCED_VAR -eq 3 ]                                         || script::returnOrExit 20
 eol
 
   (bash $_f2)                                                   || return $?
@@ -220,13 +220,13 @@ return 0
 #!/usr/bin/env bash
 echo "Being sourced (BASH_SOURCE:\${BASH_SOURCE[@]}"
 source script.sh
-source source.sh                                                || retexit 21
+source source.sh                                                || script::returnOrExit 21
 
-source::unique $_f1                                             || retexit 22
-source $_f1                                                     || retexit 23
-! source::unique $_f1                                           || retexit 24
+source::unique $_f1                                             || script::returnOrExit 22
+source $_f1                                                     || script::returnOrExit 23
+! source::unique $_f1                                           || script::returnOrExit 24
 #echo "SOURCED_VAR: \$SOURCED_VAR"
-[ \$SOURCED_VAR -eq 2 ]                                         || retexit 25
+[ \$SOURCED_VAR -eq 2 ]                                         || script::returnOrExit 25
 
 eol
   unset SOURCED_VAR
@@ -235,30 +235,30 @@ eol
   ## File sourcing all
   cat << eol > $_f4
 #!/usr/bin/env bash
-source source.sj                                                || retexit 26
+source source.sj                                                || script::returnOrExit 26
 
 echo "[add F3]"
-source::unique $_f3                                             || retexit 27
+source::unique $_f3                                             || script::returnOrExit 27
 echo "src__sourcedFiles: \${src__sourcedFiles[@]}"
-[ \$SOURCED_VAR -eq 2 ]                                         || retexit 28
+[ \$SOURCED_VAR -eq 2 ]                                         || script::returnOrExit 28
 
 echo "src__sourcedFiles: \${src__sourcedFiles[@]}"
-retexit 77
+script::returnOrExit 77
 source::unique $_f3 && _ret=\$? || _ret=\$?
 echo "_ret: \$_ret; SOURCED_VAR: \$SOURCED_VAR"
-#[ \$_ret -eq 25                                                || retexit 29
-[ \$SOURCED_VAR -eq 2 ]                                         || retexit 30
+#[ \$_ret -eq 25                                                || script::returnOrExit 29
+[ \$SOURCED_VAR -eq 2 ]                                         || script::returnOrExit 30
 
-! source::unique $_f1                                           || retexit 31
-[ \$SOURCED_VAR -eq 2 ]                                         || retexit 32
+! source::unique $_f1                                           || script::returnOrExit 31
+[ \$SOURCED_VAR -eq 2 ]                                         || script::returnOrExit 32
 
-source $_f1                                                     || retexit 33
-[ \$SOURCED_VAR -eq 3 ]                                         || retexit 34
+source $_f1                                                     || script::returnOrExit 33
+[ \$SOURCED_VAR -eq 3 ]                                         || script::returnOrExit 34
 
-! source::unique $_f1                                           || retexit 35
-[ \$SOURCED_VAR -eq 3 ]                                         || retexit 36
+! source::unique $_f1                                           || script::returnOrExit 35
+[ \$SOURCED_VAR -eq 3 ]                                         || script::returnOrExit 36
 
-source::unique $_f0                                             || retexit 37
+source::unique $_f0                                             || script::returnOrExit 37
 eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
