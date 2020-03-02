@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-
-source logging.lib
-source datetime.lib
+source logging.sh
+source datetime.sh
 
 function man() {
 cat << EOFMAN
@@ -39,7 +38,7 @@ do
 	  ;;
 
 	-*)
-	  errexit "Unrecognized option \"$1\"."
+	  log::exitError "Unrecognized option \"$1\"."
 	  ;;
 
         *)
@@ -49,15 +48,14 @@ do
     shift
 done
 set -euf
-source editor.lib
+source editor.sh
 
 ## Check file
 _files=()
 for _file in "${args[@]}"; do
   [ "$(type -t "$_file")" = "file" ] \
-   || errexit "\"$_file\" is not a file."
+   || log::exitError "\"$_file\" is not a file."
   _files+=($(realpath $(type -p "$_file")))
 done
 
-verbecho cmd: $ $EDITOR ${_files[@]}
 $EDITOR ${_files[@]}

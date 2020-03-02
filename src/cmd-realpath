@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
-
-source logging.lib
-source datetime.lib
-# verbecho, errecho, infecho, etc.
-
-function _dotests() {
-  echo "Running tests..."
-  _test_1
-  _test_2
-  return 7
-}
+source logging.sh
+source datetime.sh
 
 function man() {
 cat << EOFMAN
@@ -42,13 +33,8 @@ do
           man && exit
           ;;
 
-	--dotests)
-	  _dotests
-	  exit $?
-	  ;;
-
 	-*)
-	  errexit "Unrecognized option \"$1\"."
+	  log::exitError "Unrecognized option \"$1\"."
 	  ;;
 
         *)
@@ -59,12 +45,10 @@ do
     shift
 done
 set -euf
-source editor.lib
 
 ## Check file
 _file="${args[0]}"
 [ "$(type -t "$_file")" = "file" ] \
- || errexit "\"$_file\" is not a command file."
+ || log::exitError "\"$_file\" is not a command file."
 
-verbecho cmd: $ realpath $(type -p "$_file")
 realpath $(type -p "$_file")
