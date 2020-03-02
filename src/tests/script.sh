@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 source script.sh
+source testslh.sh
 
-test__retexit() {
-  local _func="retexit" _f{1..4} _ret
+script::script::returnOrExitTest() {
+  local _func="script::returnOrExit" _f{1..4} _ret
 
-  _f0="${tsh__TEST_DIR}/test_script_retexit_0.sh"
-  _f1="${tsh__TEST_DIR}/test_script_retexit_1.sh"
+  echo "tsh__DIR: '${tsh__DIR}'" >&2
+  _f0="${tsh__TEST_DIR}/test_script_script::returnOrExit_0.sh"
+  _f1="${tsh__TEST_DIR}/test_script_script::returnOrExit_1.sh"
   
   cat << eol > $_f0
 #!/usr/bin/env bash
@@ -20,29 +22,31 @@ eol
 #!/usr/bin/env bash
 source script.sh
 source source.sh
-#is_sourced && echo " _f1 -> sourced" || echo " _f1 -> not sourced"
+source::isFileSourced && echo " _f1 -> sourced" >&2 || echo " _f1 -> not sourced" >&2
 
-rexit
+type -a script::rexit
+script::rexit
 eol
 
   shopt -s expand_aliases                        
-  alias rexit="is_sourced                                       && return 6 \
-                                                                || exit 7" 
+  alias script::rexit="source::isFileSourced && return 6 || exit 7" 
+  (bash $_f1); tsh::expectStatus 1:7
+  #(bash $_f1)  && _ret=$? || _ret=$?
+  ##echo " _ret: $_ret"
+  #[ $_ret -eq 7 ]                                               || return 1
 
-  (bash $_f1)  && _ret=$? || _ret=$?
-  #echo " _ret: $_ret"
-  [ $_ret -eq 7 ]                                               || return 1
-
-  (source $_f1)  && _ret=$? || _ret=$?
-  #echo " _ret: $_ret"
-  [ $_ret -eq 6 ]                                               || return 2
+  (source $_f1); tsh::expectStatus 2:6
+  #(source $_f1)  && _ret=$? || _ret=$?
+  ##echo " _ret: $_ret"
+  #[ $_ret -eq 6 ]                                               || return 2
 
 
-  (bash $_f0)  && _ret=$? || _ret=$?
-  #echo " _ret: $_ret"
-  [ $_ret -eq 6 ]                                               || return 3
+  (bash $_f0); tsh::expectStatus 3:6
+  #(bash $_f0)  && _ret=$? || _ret=$?
+  ##echo " _ret: $_ret"
+  #[ $_ret -eq 6 ]                                               || return 3
 
   #(source $_f0)  && _ret=$? || _ret=$?
   #echo " _ret: $_ret"
   #[ $_ret -eq 6 ]                                              || return 4
-} && tsh__add_func test__retexit
+} && tsh::addFunc script::script::returnOrExitTest
