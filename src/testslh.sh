@@ -41,6 +41,12 @@ tsh::addFunc() {
 }
 
 tsh::testModules() {
+  local msg=""
+  msg+="v OK: Successful test\n"
+  msg+="x KO: Failed Test\n"
+  msg+="Stats: test-index:expected-status:returned-status\n"
+  printf "$msg"
+ 
   for mod in $(tsh::listTests); do
     source "$mod"
     printf "\n[$(basename $mod)]\n"
