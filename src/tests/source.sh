@@ -146,21 +146,21 @@ source::uniqueStrictTest() {
   # -------------
   ! $_func                                                      || return 2
   
-  $_func logging.lib                                            || return 3
-  ! $_func logging.lib                                          || return 4
+  $_func logging.sh                                            || return 3
+  ! $_func logging.sh                                          || return 4
   $_func array.sh                                               || return 5
   ! $_func array.sh                                             || return 6
   [ ${#src__sourcedFiles[@]} -eq 3 ]                            || return 7
  
-  ! $_func " logging.lib"                                       || return 8
+  ! $_func " logging.sh"                                       || return 8
   [ ${#src__sourcedFiles[@]} -eq 3 ]                            || return 9
 
   ! $_func "loggi" &> /dev/null                                 || return 10
   ! source::containsSource "loggi"                              || return 11
-  ! [ "$(echo "${src__sourcedFiles[@]}")"  == " logging.lib array.sh" ]     \
+  ! [ "$(echo "${src__sourcedFiles[@]}")"  == " logging.sh array.sh" ]     \
                                                                 || return 12
   [ "$(echo "${src__sourcedFiles[@]}")" \
-     == "source.sh logging.lib array.sh" ] \
+     == "source.sh logging.sh array.sh" ] \
                                                                 || return 13
 
   # --------------
