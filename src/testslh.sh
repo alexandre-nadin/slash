@@ -18,13 +18,12 @@
 #      tsh__test_funcs
 #
 ########################################
-tsh__TEST_DIR="./.testslh"
+tsh__DIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+tsh__TEST_DIR="${tsh__DIR}/.testslh"
 tsh__TEST_FILE_PREXIX="test__"
-tsh__DIR_MODS=$(readlink -f $(dirname ${BASH_SOURCE[0]}))/../src
-tsh__MODS=($(ls -d ${tsh__DIR_MODS}/tests/*))
 
 tsh::listTests() {
-  ls -d ${tsh__DIR_MODS}/tests/*
+  ls -d ${tsh__DIR}/tests/*
 }
 
 ## Array of functions to test
@@ -36,8 +35,7 @@ tsh::addFunc() {
   #
   # Adds a function name to execute for the testing framework.
   #
-  [ -z "${1:+x}" ] \
-   || tsh__funcs+=("$1")
+  [ -z "${1:+x}" ] || tsh__funcs+=("$1")
 }
 
 tsh::testModules() {
@@ -48,6 +46,7 @@ tsh::testModules() {
   printf "$msg"
  
   for mod in $(tsh::listTests); do
+    tsh::resetFuncs
     source "$mod"
     printf "\n[$(basename $mod)]\n"
     tsh::testFuncs 
