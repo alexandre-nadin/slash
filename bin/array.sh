@@ -1,1 +1,1 @@
-../usr/array.sh
+../src/array.sh

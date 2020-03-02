@@ -3,133 +3,153 @@
 # This library is designed to manipulate arrays via the use
 # of the array reference (name) only.
 # So all functions expect an array name, not array content.
-# Of course each array name should be defined in the current
+# Each array name should be defined in the current
 # shell environment.
 #
+# !! WARNING
+# There is a flaw to that library. Since array names are passed to functions
+# and array manipulations rely on Bash indirect expansions, we often need to 
+# duplicate the input array name into the function's local array. The latter
+# will be manipulated in the function scope.
+# Unexpected behaviours may arise when the (global) input array name equals the
+# local array name. The (global) input array will be resetted with the
+# declaration of the local array. I am not sure how to circumvent that.
+# The workaround for now is to give the local array a specific and
+# improbable name, such as:
 #
-function arrr_array_duplicate_from_to() {
+#   array::task() {
+#     local aFrom="$1" _aToTask=()
+#   }
+#
+# Here the local array name first begins with an underscore, and ends with the
+# name of the function. I am definitely not satisfied with this.
+# However an error is given when global and local array names match.
+# Another solution is passing array values to functions works, but is 
+# impractical when the function requires extra parameters.
+# 
+#
+array::duplicateFromTo() {
   #
   # Takes the names of two arrays defined in the current env.
   # Duplicates the first one into the second one. 
   # If first is empty, duplicate it as an empty array.
   #
   [ $# -eq 2 ]                                                  || return 1
-  local _afrom _ato _afrom_empty
-  _afrom="$1"
-  _ato="$2"
-
-  [ "$_afrom" = "$_ato" ] \
-    && echo "ERROR: Trying to duplicate same array name: '$_afrom' and '$_ato'." \
+  local aFrom _aToDuplicate aFromEmpty
+  aFrom="$1"
+  _aToDuplicate="$2"
+  [ "$aFrom" = "$_aToDuplicate" ] \
+    && echo "ERROR: Trying to duplicate same array name: '$aFrom' and '$_aToDuplicate'." >&2 \
                                                                 && return 2 \
                                                                 || :
   ## Check origin array is not empty
-  eval "[ \${$_afrom[@]:+x} ]" \
-   && _afrom_empty=false \
-   || _afrom_empty=true   
+  eval "[ \${$aFrom[@]:+x} ]" \
+   && aFromEmpty=false \
+   || aFromEmpty=true   
  
-  if $_afrom_empty; then
-    eval "$_ato=()"                                             || return 3
+  if $aFromEmpty; then
+    eval "$_aToDuplicate=()"                                    || return 3
   else
-    eval "$_ato=(\"\${$_afrom[@]}\")"                           || return 4
+    eval "$_aToDuplicate=(\"\${$aFrom[@]}\")"                   || return 4
   fi
 }
 
-function arrr_add() {
+array::add() {
   #
   # Takes an array name and adds the given element to it.
   #
   [ $# -ge 2 ]                                                  || return 1
-  local _afrom _add_anew 
-  _afrom="$1"                                          && shift || return 2
-  _add_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _add_anew              || return 3
-  for _elem in "$@"; do _add_anew+=("$_elem"); done
-  arrr_array_duplicate_from_to _add_anew "$_afrom"              || return 4
+  local aFrom _aToAdd 
+  aFrom="$1" && shift                                           || return 2
+  _aToAdd=()
+  array::duplicateFromTo "$aFrom" _aToAdd                       || return 3
+  for elem in "$@"; do _aToAdd+=("$elem"); done
+  array::duplicateFromTo _aToAdd "$aFrom"                       || return 4
 }
  
-function arrr_add_unique() {
+array::addUnique() {
   #
   # Takes an array name and add the given element to it if it does not exist.
   #
   [ $# -eq 2 ]                                                  || return 1
-  local _afrom _anew _elem
-  _afrom="$1"  && shift
-  _elem="$1" 
+  local aFrom elem
+  aFrom="$1"  && shift
+  elem="$1" 
   
-  ## Exits if _elem already exists
-  ! arrr_contains "$_afrom" "$_elem"                            || return 2
-  arrr_add "$_afrom" "$_elem"                                   || return 3
+  ## Exits if elem already exists
+  ! array::contains "$aFrom" "$elem"                            || return 2
+  array::add "$aFrom" "$elem"                                   || return 3
 }
 
-function arrr_dump() {
+array::dump() {
   #
   # Dumps the content of the given array name
   # on new lines.
   #
   [ $# -eq 1 ]                                                  || return 1
-  local _afrom _dump_anew
-  _afrom="$1"                                                   || return 2
-  _dump_anew=()
-  arrr_array_duplicate_from_to "$_afrom" _dump_anew             || return 3
-  for _elem in "${!_dump_anew[@]}"; do 
-    printf "${_dump_anew[$_elem]}\n"; 
+  local aFrom _aToDump
+  aFrom="$1"                                                    || return 2
+  _aToDump=()
+  array::duplicateFromTo "$aFrom" _aToDump                      || return 3
+  for elem in "${!_aToDump[@]}"; do 
+    printf "${_aToDump[$elem]}\n"; 
   done
 }
 
-function arrr_indexes_of() {
+array::indexesOf() {
   #
   # Takes an array name and returns the indexes 
   # where the given string is found in it.
   # $1: array name
   # $2-: [string ...]
   #
-  local _afrom _tosearch _indexes_of_anew
+  local aFrom strSearch indexes
   [ $# -ge 2 ]                                                  || return 1
-  _afrom="$1"                                          && shift || return 2
-  _tosearch="$1"
-  arrr_array_duplicate_from_to "$_afrom" _indexes_of_anew       || return 3
+  aFrom="$1" && shift                                           || return 2
+  strSearch="$1"
+  array::duplicateFromTo "$aFrom" indexes                       || return 3
   
-  for _i in "${!_indexes_of_anew[@]}"; do
-    [ "${_indexes_of_anew[$_i]}" = "$_tosearch" ] \
+  for _i in "${!indexes[@]}"; do
+    [ "${indexes[$_i]}" = "$strSearch" ] \
      && printf "$_i\n" \
      || :
   done
 }
 
-function arrr_indexes() {
+array::indexes() {
   #
   # Returns a list of indexes of the given array name.
-  # If the array is emptu or undefined, there are no indexes. 
+  # If the array is empty or undefined, there are no indexes. 
   # Returns either a non-empty list of indexes or an error.
   # For now it is a bit useless since this function would be used
   # in a subshell, losing the function's declaration.
   #
   [ $# -eq 1 ]                                                  || return 1
-  local _afrom _anew
-  _afrom="$1"
-  arrr_array_duplicate_from_to "$_afrom" _anew                  || return 2
-  for _i in "${!_anew[@]}"; do
+  local aFrom _aToIndexes
+  aFrom="$1"
+  array::duplicateFromTo "$aFrom" _aToIndexes                   || return 2
+  for _i in "${!_aToIndexes[@]}"; do
     printf "${_i}\n"
   done
 }
 
-function arrr_contains() {
+array::contains() {
   #
   # Finds if an element is present in the given array name.
   # $1: array name
   # $2: element
   #
   [ $# -eq 2 ]                                                  || return 1
-  local _afrom _tofind _indexes _nb_idx
-  _afrom="$1"                                          && shift || return 2
-  _tofind="$1"
+  local aFrom elem indexes
+  aFrom="$1" && shift                                           || return 2
+  elem="$1"
  
   ## Get the indexes
-  _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
-  [ ${#_indexes[@]} -ne 0 ]                                     || return 4
+  indexes=($(array::indexesOf "$aFrom" "$elem"))                || return 3
+  [ ${#indexes[@]} -ne 0 ]                                      || return 4
 }
 
-function arrr_pop() {
+arrr_pop() {
   #
   # Takes an array name and pops its element 
   # at the given position index. 
@@ -137,60 +157,76 @@ function arrr_pop() {
   # Default index is the array's last element's
   #
   [ $# -ge 1 ]                                                  || return 1
-  local _afrom _atemp _atemp_size _indexes _index 
-  _afrom="$1"; shift
-  _atemp=()
-  arrr_array_duplicate_from_to "$_afrom" _atemp                 || return 2
-  _atemp_size=${#_atemp[@]}
+  local aFrom _aTempPop aTempPopSize index 
+  aFrom="$1"; shift
+  _aTempPop=()
+  array::duplicateFromTo "$aFrom" _aTempPop                     || return 2
+  aTempPopSize=${#_aTempPop[@]}
   ## Array size must be > 0
-  [ $_atemp_size -gt 0 ]                                        || return 3
+  [ $aTempPopSize -gt 0 ]                                       || return 3
 
   ## Requested index
-  _index="${1:-$(( $_atemp_size -1))}"
-  
+  index="${1:-$(( $aTempPopSize -1))}"
+ 
   ## Check index is not out of bound
-  if [ $_index -ge 0 ]; then
-    [ $(( _atemp_size - _index )) -ge 1 ]                       || return 4
+  if [ $index -ge 0 ]; then
+    [ $(( aTempPopSize - index )) -ge 1 ]                       || return 4
   else
-    [ $(( _atemp_size + _index )) -ge 0 ]                       || return 5
+    [ $(( aTempPopSize + index )) -ge 0 ]                       || return 5
   fi
-
-  printf "${_atemp[$_index]}\n"
-  unset '_atemp[$_index]'                                       || return 6
-  arrr_array_duplicate_from_to _atemp "$_afrom"                 || return 7
+  printf "${_aTempPop[$index]}\n"
+  unset '_aTempPop[$index]'                                     || return 6
+  array::duplicateFromTo _aTempPop "$aFrom"                     || return 7
 }
 
-function arrr_pop_name() {
+array::popName() {
   #
   # Takes an array name and pops its first element 
   # that matches the given string, starting from the end.
   #
   [ $# -eq 2 ]                                                  || return 1 
-  local _afrom _tofind _indexes _nb_idx _index
-  _afrom="$1"                                          && shift || return 2
-  _tofind="$1"
+  local aFrom elem indexes nbIndexes index
+  aFrom="$1" && shift                                           || return 2
+  elem="$1"
 
   ## Get the indexes
-  _indexes=($(arrr_indexes_of "$_afrom" "$_tofind"))            || return 3
-  _nb_idx=${#_indexes[@]}
+  indexes=($(array::indexesOf "$aFrom" "$elem"))                || return 3
+  nbIndexes=${#indexes[@]}
   
   ## Return error if no index found
-  ! [ $_nb_idx -eq 0 ]                                          || return 4
+  ! [ $nbIndexes -eq 0 ]                                        || return 4
 
   ## Pop the first index found
-  _index=${_indexes[$(( _nb_idx -1 ))]}
-  arrr_pop "$_afrom" $_index                                    || return 5
+  index=${indexes[$(( nbIndexes -1 ))]}
+  arrr_pop "$aFrom" $index                                      || return 5
 }
 
-function arrr_set() {
+array::unique() {
   #
   # Takes input elements and returns a set.
   # A set here is still an array of unique element.
   #
   [ $# -gt 0 ]                                                  || return 0
-  local _set=()
+  local _aToUnique=()
   for _e in "$@"; do
-    arrr_add_unique _set "$_e" 
+    array::addUnique _aToUnique "$_e" 
   done
-  pecho "${_set[@]}"
+  array::print _aToUnique
+}
+
+array::print() {
+  #
+  # Takes an array name and prints its content.
+  #
+  [ $# -eq 1 ]                                                  || return 1
+  local aFrom="$1" _aTempPrint=()
+  array::duplicateFromTo "$aFrom" _aTempPrint                   || return 2
+  if [ ${#_aTempPrint[@]} -gt 0 ]; then
+    printf %s "${_aTempPrint[0]}"
+  fi
+  arrr_pop _aTempPrint 0 &> /dev/null
+  if [ ${#_aTempPrint[@]} -gt 0 ]; then
+    printf ' %s' "${_aTempPrint[@]}"
+  fi
+  printf '\n'
 }

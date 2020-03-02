@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source array.sh
 
-test__arrr_array_duplicate_from_to() {
+array::duplicateFromToTest() {
   set -u
-  local _func="arrr_array_duplicate_from_to" _res _ret
+  local _func="array::duplicateFromTo" _res _ret
   local _arr1 _arr2 _arr3
   ! $_func                                                      || return 1
   ! $_func oen two thre                                         || return 2
@@ -21,11 +21,10 @@ test__arrr_array_duplicate_from_to() {
   _arr3=(); unset _arr2
   $_func _arr3 _arr2                                            || return 9
   [ "${#_arr2[@]}" -eq 0 ]                                      || return 10
+} && tsh::addFunc array::duplicateFromToTest
 
-} && tsh__add_func test__arrr_array_duplicate_from_to
-
-test__arrr_add() {
-  local _func="arrr_add" _c
+array::addTest() {
+  local _func="array::add" _c
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2
 
@@ -41,10 +40,10 @@ test__arrr_add() {
   [ "${_c[3]}" = "added1" ]                                     || return 8
   [ "${_c[-1]}" = "added3" ]                                    || return 9
   [ ${#_c[@]} -eq 6 ]                                           || return 10
-} && tsh__add_func test__arrr_add
+} && tsh::addFunc array::addTest
 
-test__arrr_add_unique() {
-  local _func="arrr_add_unique" _c
+array::addUniqueTest() {
+  local _func="array::addUnique" _c
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2
   $_func _c "one"                                               || return 3
@@ -60,18 +59,18 @@ test__arrr_add_unique() {
 
   ! $_func _c "one"                                             || return 11
   [ ${#_c[@]} -eq 4 ]                                           || return 12
-} && tsh__add_func test__arrr_add_unique
+} && tsh::addFunc array::addUniqueTest
 
-test__arrr_dump() {
-  local _func="arrr_dump" _c
+array::dumpTest() {
+  local _func="array::dump" _c
   ! $_func                                                      || return 1
   $_func _c &> /dev/null                                        || return 2
   _c=(one thow "three four")
   [ "$($_func _c)" == "$(printf 'one\nthow\nthree four')" ]     || return 3
-} && tsh__add_func test__arrr_dump
+} && tsh::addFunc array::dumpTest
 
-test__arrr_indexes_of() {
-  local _func="arrr_indexes_of" _c
+array::indexesOfTest() {
+  local _func="array::indexesOf" _c
   _c=(one thow "three four" one)
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2
@@ -79,10 +78,10 @@ test__arrr_indexes_of() {
   [ "$($_func _c ase | xargs)" = "" ]                           || return 4
   [ "$($_func _c 'three four ' | xargs)" = "" ]                 || return 5
   [ "$($_func _c 'one' | xargs)" = "0 3" ]                      || return 6
-} && tsh__add_func test__arrr_indexes_of
+} && tsh::addFunc array::indexesOfTest
 
-test__arrr_indexes() {
-  local _func="arrr_indexes" _c _indexes
+array::indexesTest() {
+  local _func="array::indexes" _c _indexes
   ! $_func                                                      || return 1
   $_func _c                                                     || return 2
 
@@ -94,11 +93,10 @@ test__arrr_indexes() {
    while IFS= read -r _line; do
      [ "$_line" == "0 1 2 3" ]                                  || return 4
    done
-  
-} && tsh__add_func test__arrr_indexes
+} && tsh::addFunc array::indexesTest
 
-test__arrr_contains() {
-  local _func="arrr_contains" _c
+array::containsTest() {
+  local _func="array::contains" _c
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2 
   ! $_func _c "one"                                             || return 3
@@ -110,9 +108,9 @@ test__arrr_contains() {
   $_func _c 'one'                                               || return 6
   ! $_func _c ""                                                || return 7
   ! $_func _c " "                                               || return 8
-} && tsh__add_func test__arrr_contains
+} && tsh::addFunc array::containsTest
 
-test__arrr_pop() {
+test__arrr_popTest() {
   local _func="arrr_pop" _c _res
   ! $_func                                                      || return 1
   ! $_func _c                                                   || return 2
@@ -147,10 +145,10 @@ test__arrr_pop() {
   $_func _c &> /dev/null && _ret=$? || _ret=$?
   [ $_ret -eq 3 ]                                               || return 20
   [ ${#_c[@]} -eq 0 ]                                           || return 21
-} && tsh__add_func test__arrr_pop
+} && tsh::addFunc test__arrr_popTest
 
-test__arrr_pop_name() {
-  local _func="arrr_pop_name" _c
+array::popNameTest() {
+  local _func="array::popName" _c
   ! $_func                                                      || return 1
   ! $_func _c "one"                                             || return 2
   [ "$($_func _c 'one')" == "" ]                                || return 3
@@ -165,14 +163,14 @@ test__arrr_pop_name() {
   $_func _c "one" &> /dev/null                                  || return 11
   [ ${#_c[@]} -eq 3 ]                                           || return 12
   _c=()
-} && tsh__add_func test__arrr_pop_name
+} && tsh::addFunc array::popNameTest
 
-test__arrr_set() {
-  local _func="arrr_set"
+array::uniqueTest() {
+  local _func="array::unique"
   [ "$($_func one two)" == "one two" ]                          || return 1
   [ "$($_func one two one three)" == "one two three" ]          || return 2
   [ "$($_func one two 1 one three ' one')" \
       == "one two 1 three  one" ]                               || return 3
   ! [ "$($_func one two 1 one three '  one')" \
       == "one two 1 three  one" ]                               || return 4
-} && tsh__add_func test__arrr_set
+} && tsh::addFunc array::uniqueTest
