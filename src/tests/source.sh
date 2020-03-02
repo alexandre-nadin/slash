@@ -2,7 +2,7 @@
 source source.sh
 source testslh.sh
 
-test__source::cleanSource() {
+source::cleanSourceTest() {
   local _func="source::cleanSource" _ret _f1
   _f1=${tsh__TEST_DIR}/test__source_source::isFileSourced_1.sh
 
@@ -27,9 +27,9 @@ eol
   echo passed
   [ $? -eq 0 ]                                                  || return 1
   #(source $_f1 && echo sourced _f2|| echo failed sourcing _f2) || return 4
-} && tsh::addFunc test__source::cleanSource
+} && tsh::addFunc source::cleanSourceTest
 
-test__source::isFileSourced() {
+source::isFileSourcedTest() {
   local _func="source::uniqueStrict" _ret _f{1..3}
   _f1=${tsh__TEST_DIR}/test__source_source::isFileSourced_1.sh
   _f2=${tsh__TEST_DIR}/test__source_source::isFileSourced_2.sh
@@ -69,9 +69,9 @@ eol
   (source $_f3; 
    f3_source::isFileSourced                                     || exit 9
   )                                                             || return $?
-} && tsh::addFunc test__source::isFileSourced
+} && tsh::addFunc source::isFileSourcedTest
 
-test__source::resetSources() {
+source::resetSourcesTest() {
   local _func="source::resetSources" _ret
   ! $_func one two                                              || return 1
   $_func                                                        || return 2
@@ -81,17 +81,17 @@ test__source::resetSources() {
   $_func                                                        || return 6
   $_func                                                        || return 7
   [ "${#src__sourcedFiles[@]}" -eq 1 ]                          || return 8
-} && tsh::addFunc test__source::resetSources
+} && tsh::addFunc source::resetSourcesTest
 
-test__source::addSource() {
+source::addSourceTest() {
   local _func="source::addSource" _ret
   $_func; [ $? -eq 1 ]  || return 1
   $_func "testslh.sh"; [ $? -eq 0 ] || return 2
   $_func "testslh.sh"; [ ${#src__sourcedFiles[@]} -eq 3 ] || return 3
    
-} && tsh::addFunc test__source::addSource
+} && tsh::addFunc source::addSourceTest
 
-test__source::containsSource() {
+source::containsSourceTest() {
   local _func="source::containsSource" _ret
   source::resetSources                                          || return 1
   $_func                                         ; [ $? -eq 1 ] || return 2
@@ -101,9 +101,9 @@ test__source::containsSource() {
   $_func "testslh.sh"                            ; [ $? -eq 0 ] || return 6
   src__sourcedFiles=()
   $_func "testslh.sh"                            ; [ $? -eq 2 ] || return 7
-} && tsh::addFunc test__source::containsSource
+} && tsh::addFunc source::containsSourceTest
 
-test__source::addSourceUnique() {
+source::addSourceUniqueTest() {
   local _func="source::addSourceUnique" _ret
   source::resetSources                                          || return 1
   $_func                    ; [ $? -eq 1 ] || return 2
@@ -113,9 +113,9 @@ test__source::addSourceUnique() {
   $_func "first"   ; [ $? -eq 2 ] ||  return 6
   [ "$(echo "${src__sourcedFiles[@]}")" \
       == "source.sh first second  first" ]                      || return 7
-} && tsh::addFunc test__source::addSourceUnique
+} && tsh::addFunc source::addSourceUniqueTest
 
-test__source::removeSourceUnique() {
+source::removeSourceUniqueTest() {
   local _func="source::removeSourceUnique" _ret
   source::resetSources                                          || return 1
   ! $_func                                                      || return 2
@@ -131,9 +131,9 @@ test__source::removeSourceUnique() {
   $_func "first"                                                || return 12
   [ ${#src__sourcedFiles[@]} -eq 2  ]                           || return 13
   source::addSourceUnique "first"                               || return 14
-} && tsh::addFunc test__source::removeSourceUnique
+} && tsh::addFunc source::removeSourceUniqueTest
 
-test__source::uniqueStrict() {
+source::uniqueStrictTest() {
   # The file to source should:
   #  - not be registered
   #  - exist
@@ -262,4 +262,4 @@ source::unique $_f0                                             || retexit 37
 eol
   unset SOURCED_VAR
   (bash $_f4)                                                   || return $?
-} && tsh::addFunc test__source::uniqueStrict
+} && tsh::addFunc source::uniqueStrictTest
