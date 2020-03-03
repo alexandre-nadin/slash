@@ -13,7 +13,9 @@ Shells are fun. Bash is fun. Bash learning curve has seemed pretty logarithmic t
   - Expert level takes way more time. I might be reaching it.
   - Guru level, well I couldn't tell.
 
-Slash is an attempt to add cool features to Bash while broadening my knowledge on the shell.
+Slash is an attempt to add cool features and functions to Bash while broadening my knowledge on the shell.
+Shell scripting requires extra caution with syntax, tends to be ugly, leads to non-reusable spaghetti code.
+Slash tries to emphasize on readable code syntax, modulariy and unit testing.
 
 Development is still at an early stage, no clear specs have been defined, they come when I feel 
 features might be interesting to be added to Bash, or simply fun.
