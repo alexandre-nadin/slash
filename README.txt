@@ -4,7 +4,7 @@
 #
 # ########################################
 
-"Do Not Reinvent The Wheel".
+"Do Not Reinvent the Wheel".
 Amen. Yes. Well. You see. I tend to avoid generalities. I'd rather say: do not do it unless you want to learn something.
 
 Shells are fun. Bash is fun. Bash learning curve has seemed pretty logarithmic to me: 
